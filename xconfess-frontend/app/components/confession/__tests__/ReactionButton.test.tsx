@@ -165,6 +165,27 @@ describe("ReactionButton — optimistic count and active state", () => {
     });
   });
 
+  it("shows rate limit error with retryAfter countdown", async () => {
+    mockAddReaction.mockResolvedValue({
+      ok: false,
+      error: { message: "Too many reactions", code: "TOO_MANY_REQUESTS", retryAfter: 45 },
+    });
+
+    render(
+      <Wrapper>
+        <ReactionButton type="like" count={2} confessionId="c-5" />
+      </Wrapper>,
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button"));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent("Too many reactions. Please wait 45s.");
+    });
+  });
+
   it("updates count and marks active on successful reaction", async () => {
     let resolve: (v: Awaited<ReturnType<typeof addReaction>>) => void;
     mockAddReaction.mockReturnValue(
@@ -182,7 +203,6 @@ describe("ReactionButton — optimistic count and active state", () => {
     await act(async () => {
       fireEvent.click(screen.getByRole("button"));
     });
-
     // Optimistic update: count+1 and active
     expect(screen.getByText("5")).toBeInTheDocument();
     expect(screen.getByRole("button")).toHaveAttribute("aria-pressed", "true");
@@ -193,7 +213,6 @@ describe("ReactionButton — optimistic count and active state", () => {
         data: { success: true, reactions: { like: 5, love: 0 } },
       });
     });
-
     // Server confirms: count stays at 5
     await waitFor(() => {
       expect(screen.getByText("5")).toBeInTheDocument();

@@ -22,6 +22,7 @@ export const ReactionButton = ({
   const [error, setError] = useState<string | null>(null);
   const { addReaction, isPending, optimisticState } = useReactions({
     initialCounts: { like: 0, love: 0, [type]: count },
+    initialUserReaction: isActive ? type : null,
   });
 
   // Use optimistic values when a mutation is in flight so that both the
@@ -31,14 +32,16 @@ export const ReactionButton = ({
   const computedIsActive = optimisticState?.userReaction === type || isActive;
 
   const react = async () => {
-    // Clear any previous errors
     setError(null);
     setIsAnimating(true);
     setTimeout(() => setIsAnimating(false), 300);
 
     const result = await addReaction(confessionId, type);
     if (!result.ok) {
-      setError(result.error.message || "Failed to add reaction");
+      const message = result.error.retryAfter
+        ? `Too many reactions. Please wait ${result.error.retryAfter}s.`
+        : result.error.message || "Failed to add reaction";
+      setError(message);
     }
   };
 

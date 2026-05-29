@@ -22,7 +22,7 @@ export interface UseReactionsOptions {
    */
   initialCounts?: ReactionCounts;
   /**
-   * Initial user reaction state
+   * Initial user reaction state (the reaction type the user already has)
    */
   initialUserReaction?: ReactionType | null;
   /**
@@ -161,14 +161,14 @@ export function useReactions(options: UseReactionsOptions = {}): UseReactionsRet
 
     // Called if mutation fails
     onError: (error, _variables, context) => {
+      // Set error state
+      setLocalError(error as Error);
+
       // Rollback to previous values
       restoreQuerySnapshots(queryClient, context?.previousConfessionQueries);
 
       // Clear optimistic state
       setOptimisticState(null);
-
-      // Set error state
-      setLocalError(error as Error);
 
       // Call error callback
       if (onError) {
@@ -177,6 +177,7 @@ export function useReactions(options: UseReactionsOptions = {}): UseReactionsRet
     },
 
     onSuccess: (result, variables) => {
+      // Only update cache if we had optimistic state
       if (result.data.reactions) {
         const serverCounts = normalizeCounts(result.data.reactions);
 
@@ -213,8 +214,23 @@ export function useReactions(options: UseReactionsOptions = {}): UseReactionsRet
     confessionId: string,
     type: ReactionType
   ): Promise<AddReactionResponse> => {
+    // If user already has this reaction, skip optimistic update (no count change expected)
+    const alreadyReacted = initialUserReaction === type;
+    if (alreadyReacted) {
+      // Still call the API to get the latest state, but don't optimistically update
+      const result = await addReaction(confessionId, type);
+      
+      // Backend returns success with existing reaction (no change)
+      // We don't need to do anything special here - the UI already shows the correct state
+      if (onSuccess && result.ok) {
+        onSuccess(result);
+      }
+      
+      return result;
+    }
+    
     try {
-      const result = await mutation.mutateAsync({ confessionId, type });
+      const result = await mutation.mutateAsync({ confessionId, type, alreadyReacted: false });
 
       if (onSuccess) {
         onSuccess(result);
@@ -231,7 +247,7 @@ export function useReactions(options: UseReactionsOptions = {}): UseReactionsRet
         },
       };
     }
-  }, [mutation, onSuccess]);
+  }, [mutation, onSuccess, initialUserReaction]);
 
   const handleRemoveReaction = useCallback(async (
     _confessionId: string,

@@ -237,4 +237,55 @@ describe("useReactions", () => {
     expect(result.current.optimisticState).toBeNull();
     expect(result.current.error?.message).toBe("Server error");
   });
+
+  it("shows rate limit error with retryAfter seconds available", async () => {
+    const { queryClient, wrapper } = createTestHarness();
+    const { listKey } = seedConfessionCache(queryClient);
+
+    mockAddReaction.mockResolvedValue({
+      ok: false,
+      error: { message: "Too many requests", code: "TOO_MANY_REQUESTS", retryAfter: 30 },
+    });
+
+    const { result } = renderHook(
+      () => useReactions({ initialCounts: { like: 2, love: 1 } }),
+      { wrapper },
+    );
+
+    let response: Awaited<ReturnType<typeof result.current.addReaction>> | undefined;
+    await act(async () => {
+      response = await result.current.addReaction("confession-1", "like");
+    });
+
+    expect(response?.error.retryAfter).toBe(30);
+    expect(listKey).toBeDefined();
+  });
+
+  it("does not optimistically update when user already has the same reaction type", async () => {
+    const { queryClient, wrapper } = createTestHarness();
+    const { listKey } = seedConfessionCache(queryClient);
+
+    // Backend returns existing reaction (success, but no count change)
+    mockAddReaction.mockResolvedValue({
+      ok: true,
+      data: { success: true, reactions: { like: 2, love: 1 } },
+    });
+
+    const { result } = renderHook(
+      () => useReactions({ initialCounts: { like: 2, love: 1 }, initialUserReaction: "like" }),
+      { wrapper },
+    );
+
+    await act(async () => {
+      await result.current.addReaction("confession-1", "like");
+    });
+
+    const optimisticList =
+      queryClient.getQueryData<InfiniteData<GetConfessionsResult>>(listKey);
+
+    // Count should NOT have been incremented (user already had this reaction)
+    // The hook skips optimistic update for already-reacted cases
+    expect(optimisticList?.pages[0].confessions[0].reactions.like).toBe(2);
+    expect(result.current.optimisticState).toBeNull();
+  });
 });
