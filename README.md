@@ -101,10 +101,12 @@ This starts the backend and frontend concurrently. Once both are ready:
 |---------|-----|
 | Frontend | http://localhost:3000 |
 | Backend API | http://localhost:5000 |
-| Health (live) | http://localhost:5000/health/live |
-| Health (ready) | http://localhost:5000/health/ready |
+| Health (live) | http://localhost:5000/api/health/live |
+| Health (ready) | http://localhost:5000/api/health/ready |
 | Postgres | localhost:55432 |
 | Redis | localhost:6379 |
+
+See [Health Endpoint Quick Reference](docs/HEALTH_ENDPOINT_QUICK_REFERENCE.md) for details on liveness vs readiness probes, Kubernetes config examples, and response formats.
 
 ### Running individual services
 
