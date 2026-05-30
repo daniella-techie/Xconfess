@@ -253,6 +253,11 @@ The deploy step writes network metadata to `deployments/<network>.json`, includi
 - crate versions
 - wasm SHA-256 hashes
 
+See [`deployments/README.md`](../deployments/README.md) for the deployment
+metadata naming convention, commit policy, and redacted example. See
+[`docs/contract-release-and-upgrade-runbook.md`](../docs/contract-release-and-upgrade-runbook.md)
+for checksum review and post-deployment verification.
+
 ### Prerequisites for deployment
 
 1. Generate or import a Stellar keypair:
@@ -295,13 +300,20 @@ STELLAR_RPC_URL=https://soroban-testnet.stellar.org
 
 ### Deploy to mainnet
 
+Mainnet deployment is allowed only after the same commit has been deployed and
+verified on testnet. Before running this command, complete the mainnet safety
+gate in
+[`docs/contract-release-and-upgrade-runbook.md`](../docs/contract-release-and-upgrade-runbook.md#mainnet-safety-gate)
+and record approvals from platform, security, and release owners.
+
 ```bash
-./scripts/contracts-release.sh build
-./scripts/contracts-release.sh deploy --network mainnet --source my-mainnet-key
+./scripts/contracts-release.sh deploy --network public --source my-mainnet-key
 ```
 
 > **Warning:** Mainnet deployments are permanent and incur real XLM fees.
-> Always test on testnet first.
+> Keep the previous `deployments/<network>.json` ready for rollback, and use
+> [`docs/contract-signer-rotation-runbook.md`](../docs/contract-signer-rotation-runbook.md)
+> for contracts with pause controls.
 
 ---
 
