@@ -191,6 +191,75 @@ describe("TipButton", () => {
     });
   });
 
+  it("shows validation guidance for tip amount precision and unit", async () => {
+    render(<TipButton {...defaultProps} />);
+    fireEvent.click(screen.getByLabelText("Tip confession"));
+
+    expect(
+      screen.getByText(/Enter amount in XLM with 0.1 precision/i),
+    ).toBeInTheDocument();
+  });
+
+  it("prevents sending for empty tip amount", async () => {
+    render(<TipButton {...defaultProps} />);
+    fireEvent.click(screen.getByLabelText("Tip confession"));
+
+    const input = screen.getByLabelText("Tip amount in XLM");
+    fireEvent.change(input, { target: { value: "" } });
+
+    fireEvent.click(screen.getByText(/Tip\s*XLM/));
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/Enter a tip amount in XLM/i).length).toBeGreaterThanOrEqual(1);
+    });
+    expect(mockSendTip).not.toHaveBeenCalled();
+  });
+
+  it("prevents sending for zero tip amount", async () => {
+    render(<TipButton {...defaultProps} />);
+    fireEvent.click(screen.getByLabelText("Tip confession"));
+
+    const input = screen.getByLabelText("Tip amount in XLM");
+    fireEvent.change(input, { target: { value: "0" } });
+
+    fireEvent.click(screen.getByText("Tip 0 XLM"));
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/greater than zero/i).length).toBeGreaterThanOrEqual(1);
+    });
+    expect(mockSendTip).not.toHaveBeenCalled();
+  });
+
+  it("prevents sending for negative tip amount", async () => {
+    render(<TipButton {...defaultProps} />);
+    fireEvent.click(screen.getByLabelText("Tip confession"));
+
+    const input = screen.getByLabelText("Tip amount in XLM");
+    fireEvent.change(input, { target: { value: "-1" } });
+
+    fireEvent.click(screen.getByText("Tip -1 XLM"));
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/cannot be negative/i).length).toBeGreaterThanOrEqual(1);
+    });
+    expect(mockSendTip).not.toHaveBeenCalled();
+  });
+
+  it("prevents sending for nonnumeric tip amount", async () => {
+    render(<TipButton {...defaultProps} />);
+    fireEvent.click(screen.getByLabelText("Tip confession"));
+
+    const input = screen.getByLabelText("Tip amount in XLM");
+    fireEvent.change(input, { target: { value: "abc" } });
+
+    fireEvent.click(screen.getByText("Tip abc XLM"));
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/Enter a valid numeric amount/i).length).toBeGreaterThanOrEqual(1);
+    });
+    expect(mockSendTip).not.toHaveBeenCalled();
+  });
+
   it("shows minimum tip error for amounts below threshold", async () => {
     render(<TipButton {...defaultProps} />);
     fireEvent.click(screen.getByLabelText("Tip confession"));
@@ -201,8 +270,9 @@ describe("TipButton", () => {
     fireEvent.click(screen.getByText("Tip 0.01 XLM"));
 
     await waitFor(() => {
-      expect(screen.getByText(/Minimum tip/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/Minimum tip/i).length).toBeGreaterThanOrEqual(1);
     });
+    expect(mockSendTip).not.toHaveBeenCalled();
   });
 
   it("displays tip stats in footer", async () => {

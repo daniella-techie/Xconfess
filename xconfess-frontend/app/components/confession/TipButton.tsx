@@ -15,12 +15,30 @@ import { Wallet, AlertCircle } from "lucide-react";
 import { cn } from "@/app/lib/utils/cn";
 import { getStellarExplorerUrl } from "@/app/lib/utils/stellar";
 
-const MIN_TIP_AMOUNT = 0.1;
-
 interface TipButtonProps {
   confessionId: string;
   recipientAddress?: string;
   initialStats?: TipStats;
+}
+
+const MIN_TIP_AMOUNT = 0.1;
+const TIP_STEP = 0.1;
+const TIP_UNIT = "XLM";
+
+function parseTipAmount(rawAmount: string): number | null {
+  if (rawAmount.trim() === "") return null;
+  const amount = Number(rawAmount);
+  return Number.isFinite(amount) ? amount : null;
+}
+
+function getTipAmountValidationError(value: string): string | null {
+  if (value.trim() === "") return `Enter a tip amount in ${TIP_UNIT}.`;
+  const amount = parseTipAmount(value);
+  if (amount === null) return "Enter a valid numeric amount.";
+  if (amount === 0) return "Tip amount must be greater than zero.";
+  if (amount < 0) return "Tip amount cannot be negative.";
+  if (amount < MIN_TIP_AMOUNT) return `Minimum tip is ${MIN_TIP_AMOUNT} ${TIP_UNIT}.`;
+  return null;
 }
 
 function Spinner() {
@@ -73,11 +91,13 @@ export const TipButton = ({
       return;
     }
 
-    const amount = parseFloat(tipAmount);
-    if (isNaN(amount) || amount < MIN_TIP_AMOUNT) {
-      setError(`Minimum tip is ${MIN_TIP_AMOUNT} XLM`);
+    const validationError = getTipAmountValidationError(tipAmount);
+    if (validationError) {
+      setError(validationError);
       return;
     }
+
+    const amount = parseTipAmount(tipAmount)!;
 
     if (!isConnected) {
       try {
@@ -328,9 +348,12 @@ export const TipButton = ({
                 <input
                   type="number"
                   value={tipAmount}
-                  onChange={(e) => setTipAmount(e.target.value)}
+                  onChange={(e) => {
+                    setTipAmount(e.target.value);
+                    if (error) setError(null);
+                  }}
                   min={MIN_TIP_AMOUNT}
-                  step="0.1"
+                  step={TIP_STEP}
                   disabled={isSending}
                   className="w-full p-2 pr-12 bg-zinc-900 text-white rounded-lg border border-zinc-700 focus:border-purple-500 focus:outline-none disabled:opacity-50"
                   aria-label="Tip amount in XLM"
@@ -339,6 +362,15 @@ export const TipButton = ({
                   XLM
                 </span>
               </div>
+              <p className={cn(
+                "mt-2 text-xs",
+                getTipAmountValidationError(tipAmount)
+                  ? "text-red-400"
+                  : "text-zinc-400",
+              )}>
+                {getTipAmountValidationError(tipAmount) ??
+                  `Enter amount in ${TIP_UNIT} with ${TIP_STEP} precision. Minimum ${MIN_TIP_AMOUNT} ${TIP_UNIT}.`}
+              </p>
 
               <button
                 onClick={handleTip}
