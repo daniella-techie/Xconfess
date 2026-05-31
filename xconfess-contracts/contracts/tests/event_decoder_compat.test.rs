@@ -1,3 +1,6 @@
+//! Event decoder compatibility tests.
+//! Version bump workflow: `docs/contract-event-version-bump-checklist.md`
+
 use soroban_sdk::{Env, testutils::Address as _};
 use xconfess_contract::events::*;
 use confession_anchor::{ConfessionAnchor, ConfessionAnchorClient};

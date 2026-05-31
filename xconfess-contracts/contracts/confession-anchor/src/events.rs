@@ -3,6 +3,7 @@
 use soroban_sdk::{contracttype, BytesN, Env};
 
 /// Bump when event payload shape/topic compatibility changes in a breaking way.
+/// See `docs/contract-event-version-bump-checklist.md` for backend/fixture steps.
 pub const EVENT_SCHEMA_VERSION: u32 = 1;
 
 /// Topic emitted by `anchor_confession`.

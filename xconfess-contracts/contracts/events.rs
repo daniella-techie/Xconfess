@@ -3,6 +3,8 @@ use soroban_sdk::{contracttype, symbol_short, Address, Env, String as SorobanStr
 /// ===========================================
 /// GLOBAL EVENT VERSIONING
 /// ===========================================
+/// When changing event schemas or `event_version`, follow:
+/// `docs/contract-event-version-bump-checklist.md`
 pub const EVENT_VERSION_V1: u32 = 1;
 
 /// Stable discriminators (NEVER CHANGE)

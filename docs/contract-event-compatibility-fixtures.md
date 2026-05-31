@@ -1,5 +1,7 @@
 # Contract Event Compatibility Fixture Documentation
 
+> **Changing `event_version` or fixtures?** Follow the step-by-step checklist in [`contract-event-version-bump-checklist.md`](./contract-event-version-bump-checklist.md) (required for Wave 5 event changes).
+
 ## Overview
 Contract event fixtures are essential for verifying that the Soroban contract events can be successfully parsed and processed by downstream consumers, such as the backend services.
 
@@ -32,6 +34,7 @@ Any change to a Soroban event schema (e.g., adding a field, changing a type) mus
 The backend Stellar event tests rely on these fixtures. If the backend fails to parse the new fixtures, the contract changes cannot be safely deployed without accompanying backend updates.
 
 ## References
-* Backend Event Tests: Located in the `xconfess-backend/tests` directory.
-* Fixture Locations: Stored in `xconfess-contracts/tests/fixtures` (or equivalent snapshot directories).
+* **[Event version bump checklist](./contract-event-version-bump-checklist.md)** — contract files, backend fixture tests, changelog template, and version increment rules.
+* Backend fixture tests: [`xconfess-backend/src/stellar/__tests__/contract-event-fixtures.spec.ts`](../xconfess-backend/src/stellar/__tests__/contract-event-fixtures.spec.ts), [`xconfess-backend/src/tipping/contract-fixtures.spec.ts`](../xconfess-backend/src/tipping/contract-fixtures.spec.ts)
+* Contract fixture tests: [`xconfess-contracts/contracts/tests/backend_verification_fixtures.rs`](../xconfess-contracts/contracts/tests/backend_verification_fixtures.rs)
 * [Event Schemas Reference](./event-schemas.md)

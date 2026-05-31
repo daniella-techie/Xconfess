@@ -17,6 +17,10 @@
 //! ## Usage
 //! Contract tests call these fixtures to verify event emission.
 //! Backend tests import the JSON output to validate parsing logic.
+//!
+//! ## Version bumps
+//! See `docs/contract-event-version-bump-checklist.md` before changing
+//! `FIXTURE_VERSION`, `event_version`, or fixture payload shapes.
 
 use soroban_sdk::{
     testutils::{Address as _, Events},

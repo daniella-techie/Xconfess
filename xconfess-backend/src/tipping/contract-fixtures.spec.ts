@@ -6,6 +6,10 @@
  *
  * This ensures that contract and backend changes don't silently break
  * the tip verification and reconciliation workflows.
+ *
+ * @see docs/contract-event-version-bump-checklist.md — required steps when
+ *      changing event_version or fixture_version (paired with
+ *      xconfess-contracts/contracts/tests/backend_verification_fixtures.rs).
  */
 
 import { Test, TestingModule } from '@nestjs/testing';
