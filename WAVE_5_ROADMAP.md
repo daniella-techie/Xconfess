@@ -65,12 +65,13 @@ Wave 5 should move XConfess from a completed Wave 1-4 implementation into a stro
 
 ### 6. Wave 5 Reporting Package
 
-- Prepare a short Wave 5 progress summary.
+- Prepare a short Wave 5 progress summary using `maintainer/WAVE_5_PROGRESS_TEMPLATE.md`.
 - Capture screenshots or a demo script for the main flows — see `docs/DEMO_SCRIPT.md`.
 - List completed Wave 5 work, remaining risks, and next milestones.
 - Link key verification commands and results.
 - Keep the external contributor issue queue aligned with `maintainer/WAVE_TRIAGE.md`.
 - Use `maintainer/WAVE_5_CONTRIBUTOR_ASSIGNMENT.md` for contributor assignment process.
+- Use `maintainer/DASHBOARD_SYNC_CHECKLIST.md` to keep GitHub issue status aligned with the Drips Wave dashboard.
 
 ## Immediate Next Actions
 

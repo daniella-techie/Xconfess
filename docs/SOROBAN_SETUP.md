@@ -335,8 +335,9 @@ STELLAR_NETWORK_PASSPHRASE=Test SDF Network ; September 2015
 # Contract IDs
 CONFESSION_ANCHOR_CONTRACT=CCHDY246UUPY6VUGIDVSK266KXA64CXM6RR2QLTKJD7E7IGV74ZP5XFB
 
-# Deployer (NEVER commit this!)
-DEPLOYER_SECRET_KEY=SXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+# Deployer — use a Stellar CLI key name, never a raw secret
+# Generate with: stellar keys generate --global deployer --network testnet
+# DEPLOYER_KEY_NAME=deployer
 ```
 
 ### Frontend (.env.local)
