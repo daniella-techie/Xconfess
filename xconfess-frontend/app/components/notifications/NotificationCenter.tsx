@@ -170,12 +170,12 @@ export function NotificationCenter({ onClose }: NotificationCenterProps) {
               <Filter className="w-6 h-6 text-gray-400" />
             </div>
             <p className="text-sm font-medium text-gray-700 mb-1">
-              No notifications
+              {showUnreadOnly ? "All caught up!" : "No notifications yet"}
             </p>
             <p className="text-xs text-gray-500">
               {showUnreadOnly
-                ? "You're all caught up!"
-                : "You'll see notifications here when you have activity"}
+                ? "You've read all your notifications."
+                : "Activity on your confessions will show up here"}
             </p>
           </div>
         ) : (

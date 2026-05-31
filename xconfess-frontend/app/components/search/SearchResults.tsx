@@ -109,7 +109,7 @@ export function SearchResults({
         <p className="mt-2 text-center text-sm text-[var(--secondary)]">
           {statusMeta?.partial
             ? "Results may be partial right now. Try a broader query while search catches up."
-            : "Try different keywords or loosen your filters."}
+            : "Try broader keywords, adjust your filters, or explore trending topics."}
         </p>
         <div className="mt-4 flex flex-wrap justify-center gap-2">
           {onRetry && (
