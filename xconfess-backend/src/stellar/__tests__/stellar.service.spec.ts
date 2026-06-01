@@ -44,6 +44,12 @@ describe('StellarService', () => {
       expect(config).toHaveProperty('network');
       expect(config).toHaveProperty('horizonUrl');
       expect(config).toHaveProperty('sorobanRpcUrl');
+      expect(config).toHaveProperty('contractIds');
+      expect(config.contractIds).toEqual({
+        confessionAnchor: null,
+        reputationBadges: null,
+        tippingSystem: null,
+      });
       expect(config).not.toHaveProperty('serverSecret'); // Should never expose secrets
     });
     it('should return testnet configuration in test environment', () => {
@@ -117,6 +123,12 @@ describe('StellarService', () => {
       expect(config).toHaveProperty('network');
       expect(config).toHaveProperty('horizonUrl');
       expect(config).toHaveProperty('sorobanRpcUrl');
+      expect(config).toHaveProperty('contractIds');
+      expect(config.contractIds).toEqual({
+        confessionAnchor: null,
+        reputationBadges: null,
+        tippingSystem: null,
+      });
       expect(config).not.toHaveProperty('serverSecret'); // Should never expose secrets
     });
     it('should return testnet configuration in test environment', () => {

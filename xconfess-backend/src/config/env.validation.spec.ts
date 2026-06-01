@@ -55,4 +55,40 @@ describe('Environment Validation', () => {
       'CONFESSION_ENCRYPTION_KEY must be a valid hexadecimal string',
     );
   });
+
+  it('should allow boot without contract IDs when Stellar features are disabled', () => {
+    const config = {
+      ...baseConfig,
+      CONFESSION_ENCRYPTION_KEY: validKey,
+      STELLAR_FEATURES_ENABLED: 'false',
+    };
+    const { error } = envValidationSchema.validate(config);
+    expect(error).toBeUndefined();
+  });
+
+  it('should require contract IDs when Stellar features are enabled', () => {
+    const config = {
+      ...baseConfig,
+      CONFESSION_ENCRYPTION_KEY: validKey,
+      STELLAR_FEATURES_ENABLED: 'true',
+    };
+    const { error } = envValidationSchema.validate(config);
+    expect(error).toBeDefined();
+    expect(error!.message).toContain('CONFESSION_ANCHOR_CONTRACT_ID');
+    expect(error!.message).toContain('REPUTATION_BADGES_CONTRACT_ID');
+    expect(error!.message).toContain('TIPPING_SYSTEM_CONTRACT_ID');
+  });
+
+  it('should pass when Stellar features are enabled and all contract IDs are set', () => {
+    const config = {
+      ...baseConfig,
+      CONFESSION_ENCRYPTION_KEY: validKey,
+      STELLAR_FEATURES_ENABLED: 'true',
+      CONFESSION_ANCHOR_CONTRACT_ID: 'CANCHOR',
+      REPUTATION_BADGES_CONTRACT_ID: 'CBADGES',
+      TIPPING_SYSTEM_CONTRACT_ID: 'CTIP',
+    };
+    const { error } = envValidationSchema.validate(config);
+    expect(error).toBeUndefined();
+  });
 });

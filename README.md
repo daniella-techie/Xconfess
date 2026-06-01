@@ -75,7 +75,7 @@ Required keys to set before first boot (everything else has safe defaults):
 | `CONFESSION_ENCRYPTION_KEY` | 64-character hex string used to encrypt confession content |
 | `STELLAR_SERVER_SECRET` | Stellar keypair secret for on-chain operations (testnet only) |
 
-Mail (`MAIL_HOST`, `MAIL_USER`, `MAIL_PASSWORD`) and Stellar contract IDs are pre-filled with testnet values in the example file and can be left as-is for local development.
+Mail (`MAIL_HOST`, `MAIL_USER`, `MAIL_PASSWORD`) and Stellar contract IDs are pre-filled with testnet values in the example file and can be left as-is for local development. Leave `STELLAR_FEATURES_ENABLED=false` (default) to boot without enforcing every contract ID; set it to `true` only when you need full on-chain anchoring and tipping.
 
 **Frontend** — copy the sample (no secrets required for basic local use):
 
@@ -134,9 +134,38 @@ npm run backend:test:e2e
 # Frontend tests
 npm run frontend:test
 
-# Contract tests (requires Rust toolchain)
+# Backend + Soroban contract tests (from monorepo root)
+npm test
+```
+
+Root `npm test` runs backend unit tests, then contract tests via `npm run contract:test`. Use it when you want the same contract coverage as CI without running the full `npm run ci` pipeline.
+
+### Soroban contracts (Rust / `cargo`)
+
+Rust commands for `xconfess-contracts` must be run with that directory as the working directory (or use the root `npm run contract:*` scripts, which delegate there automatically).
+
+```bash
+cd xconfess-contracts
+
+# Format
+cargo fmt --all
+
+# Lint (clippy, warnings as errors — mirrors CI)
+cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+# Tests
+cargo test --workspace
+```
+
+Equivalent from the monorepo root (no `cd` required):
+
+```bash
+npm run contract:fmt
+npm run contract:lint
 npm run contract:test
 ```
+
+See `xconfess-contracts/README.md` for release builds, integration tests, and deployment.
 
 ### Builds
 

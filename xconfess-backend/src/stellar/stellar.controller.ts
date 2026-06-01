@@ -8,7 +8,8 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiOkResponse } from '@nestjs/swagger';
+import { StellarConfigResponseDto } from './dto/stellar-config-response.dto';
 import { ConfigService } from '@nestjs/config';
 import * as StellarSDK from '@stellar/stellar-sdk';
 import { StellarService } from './stellar.service';
@@ -37,9 +38,18 @@ export class StellarController {
   ) {}
 
   @Get('config')
-  @ApiOperation({ summary: 'Get Stellar network configuration' })
-  @ApiResponse({ status: 200, description: 'Network configuration' })
-  getConfig() {
+  @ApiOperation({
+    summary: 'Get Stellar network and contract deployment configuration',
+    description:
+      'Returns the configured network, public RPC endpoints, and Soroban contract IDs. ' +
+      'Never includes secrets, deployer keys, or server signer material. ' +
+      'Unset contract IDs are returned as null.',
+  })
+  @ApiOkResponse({
+    description: 'Public Stellar deployment summary',
+    type: StellarConfigResponseDto,
+  })
+  getConfig(): StellarConfigResponseDto {
     return this.stellarService.getNetworkConfig();
   }
 

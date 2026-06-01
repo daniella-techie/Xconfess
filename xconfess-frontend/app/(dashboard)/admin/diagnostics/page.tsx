@@ -1,25 +1,10 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import apiClient from '@/app/lib/api/client';
+import { fetchStellarConfig } from '@/app/lib/api/stellar';
+import type { StellarConfigResponse } from '@/app/lib/types/stellar';
 
-interface StellarConfig {
-  network: string;
-  horizonUrl: string;
-  sorobanRpcUrl: string;
-  contractIds: {
-    confessionAnchor?: string;
-    reputationBadges?: string;
-    tippingSystem?: string;
-  };
-}
-
-async function fetchStellarConfig(): Promise<StellarConfig> {
-  const response = await apiClient.get('/stellar/config');
-  return response.data;
-}
-
-function ConfigRow({ label, value, mono }: { label: string; value: string | undefined | null; mono?: boolean }) {
+function ConfigRow({ label, value, mono }: { label: string; value: string | null; mono?: boolean }) {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 py-3 border-b border-gray-100 dark:border-gray-800 last:border-0">
       <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 sm:w-48 shrink-0">
@@ -43,7 +28,7 @@ function Skeleton() {
 }
 
 export default function DiagnosticsPage() {
-  const { data: config, isLoading, error } = useQuery<StellarConfig>({
+  const { data: config, isLoading, error } = useQuery<StellarConfigResponse>({
     queryKey: ['stellar', 'config'],
     queryFn: fetchStellarConfig,
     retry: 2,
@@ -91,9 +76,9 @@ export default function DiagnosticsPage() {
               Contract IDs
             </h3>
             <dl className="divide-y divide-gray-100 dark:divide-gray-800">
-              <ConfigRow label="Confession Anchor" value={config.contractIds?.confessionAnchor} mono />
-              <ConfigRow label="Reputation Badges" value={config.contractIds?.reputationBadges} mono />
-              <ConfigRow label="Tipping System" value={config.contractIds?.tippingSystem} mono />
+              <ConfigRow label="Confession Anchor" value={config.contractIds.confessionAnchor} mono />
+              <ConfigRow label="Reputation Badges" value={config.contractIds.reputationBadges} mono />
+              <ConfigRow label="Tipping System" value={config.contractIds.tippingSystem} mono />
             </dl>
           </div>
         </div>

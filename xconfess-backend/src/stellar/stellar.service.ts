@@ -4,6 +4,7 @@ import * as StellarSDK from '@stellar/stellar-sdk';
 import { StellarConfigService } from './stellar-config.service';
 import { TransactionBuilderService } from './transaction-builder.service';
 import { ITransactionResult } from './interfaces/stellar-config.interface';
+import { StellarConfigResponseDto } from './dto/stellar-config-response.dto';
 import { AppException } from '../common/errors/app-exception';
 import { ErrorCode } from '../common/errors/error-codes';
 import { HttpStatus } from '@nestjs/common';
@@ -109,15 +110,19 @@ export class StellarService {
   }
 
   /**
-   * Get network configuration (safe for public exposure)
+   * Get network configuration (safe for public exposure; never includes secrets).
    */
-  getNetworkConfig() {
+  getNetworkConfig(): StellarConfigResponseDto {
     const config = this.stellarConfig.getConfig();
     return {
       network: config.network,
       horizonUrl: config.horizonUrl,
       sorobanRpcUrl: config.sorobanRpcUrl,
-      contractIds: config.contractIds,
+      contractIds: {
+        confessionAnchor: config.contractIds.confessionAnchor ?? null,
+        reputationBadges: config.contractIds.reputationBadges ?? null,
+        tippingSystem: config.contractIds.tippingSystem ?? null,
+      },
     };
   }
 

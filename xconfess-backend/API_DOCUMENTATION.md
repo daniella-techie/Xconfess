@@ -363,7 +363,7 @@ The following list matches active `@Controller(...)` + method decorators.
 | POST | `/api/admin/email/preview` |
 | POST | `/api/encryption/encrypt` |
 | POST | `/api/encryption/decrypt` |
-| GET | `/api/stellar/config` |
+| GET | `/api/stellar/config` — network, RPC URLs, public contract IDs (`null` if unset; no secrets) |
 | GET | `/api/stellar/balance/:address` |
 | POST | `/api/stellar/verify` |
 | GET | `/api/stellar/account-exists/:address` |
