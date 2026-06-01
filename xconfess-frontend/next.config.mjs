@@ -12,6 +12,10 @@ const nextConfig = {
   experimental: {
     optimizePackageImports: ["lucide-react", "@stellar/stellar-sdk"],
     useLightningcss: false,
+    turbopack: {
+      // Force Turbopack to explicitly anchor its compilation context here
+      root: __dirname,
+    },
   },
   compiler: {
     removeConsole:

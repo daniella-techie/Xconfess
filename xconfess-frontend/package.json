@@ -32,10 +32,10 @@
     "immer": "latest",
     "jiti": "latest",
     "lucide-react": "^0.562.0",
-    "next": "^16.2.1",
+    "next": "^16.2.6",
     "nodemailer": "latest",
-    "react": "19.2.3",
-    "react-dom": "19.2.3",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
     "react-hook-form": "^7.71.1",
     "react-markdown": "^10.1.0",
     "recharts": "^3.7.0",
@@ -86,4 +86,3 @@
     "lightningcss-win32-x64-msvc": "^1.30.2"
   }
 }
-
