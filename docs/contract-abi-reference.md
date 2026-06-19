@@ -304,21 +304,30 @@ Check if upgrade from a specific version is compatible.
 
 #### `pause(env, caller, reason) -> Result<(), Error>`
 
-Pause the contract (owner/admin only). Blocks `anchor_confession` writes.
+Pause the contract (owner/admin only). Blocks `anchor_confession` writes while preserving read-only verification and count queries.
 
 **Parameters:**
 - `caller: Address` - Must be owner or admin
 - `reason: String` - Reason for pausing
 
+**Errors:**
+- `NotAuthorized` (code 2) when `caller` is not owner/admin
+- `AlreadyPaused` (code 9) when the contract is already paused
+- `ContractPaused` (code 12) is emitted by blocked write paths such as `anchor_confession` while paused
+
 ---
 
 #### `unpause(env, caller, reason) -> Result<(), Error>`
 
-Unpause the contract (owner/admin only).
+Unpause the contract (owner/admin only). After a successful unpause, `anchor_confession` writes are accepted again.
 
 **Parameters:**
 - `caller: Address` - Must be owner or admin
 - `reason: String` - Reason for unpausing
+
+**Errors:**
+- `NotAuthorized` (code 2) when `caller` is not owner/admin
+- `NotPaused` (code 10) when the contract is not currently paused
 
 ---
 

@@ -1286,6 +1286,39 @@ mod test {
     }
 
     #[test]
+    fn pause_blocks_anchor_and_unpause_restores_writes() {
+        let (env, client) = new_client();
+        let owner = Address::generate(&env);
+        let reason = SorobanString::from_str(&env, "incident");
+        let blocked_hash = sample_hash(&env, 91);
+        let restored_hash = sample_hash(&env, 92);
+
+        client.initialize(&owner);
+        client.pause(&owner, &reason);
+        assert!(client.is_paused());
+
+        let paused_anchor = client.try_anchor_confession(&blocked_hash, &1_700_000_000_001);
+        assert!(
+            paused_anchor.is_err(),
+            "anchoring should fail while paused: {paused_anchor:?}"
+        );
+        assert_eq!(client.verify_confession(&blocked_hash), None);
+        assert_eq!(client.get_confession_count(), 0);
+
+        client.unpause(&owner, &reason);
+        assert!(!client.is_paused());
+        assert_eq!(
+            client.anchor_confession(&restored_hash, &1_700_000_000_002),
+            symbol_short!("anchored")
+        );
+        assert_eq!(
+            client.verify_confession(&restored_hash),
+            Some(1_700_000_000_002)
+        );
+        assert_eq!(client.get_confession_count(), 1);
+    }
+
+    #[test]
     fn pause_reason_exact_limit_succeeds() {
         let (env, client) = new_client();
         let owner = Address::generate(&env);
