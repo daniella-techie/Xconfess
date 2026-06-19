@@ -45,7 +45,7 @@ fn tipping_pair() -> (
     env.mock_all_auths();
     let id = env.register(AnonymousTipping, ());
     let pre = AnonymousTippingClient::new(&env, &id);
-    pre.init();
+    pre.init(&id);
     let post = AnonymousTippingClient::new(&env, &id);
     (env, pre, post)
 }
@@ -188,10 +188,11 @@ fn anchor_duplicate_protection_preserved_after_upgrade() {
 #[test]
 fn tipping_settlement_nonce_survives_upgrade() {
     let (env, pre, post) = tipping_pair();
+    let sender = Address::generate(&env);
     let recipient = Address::generate(&env);
 
-    let id1 = pre.send_tip(&recipient, &100i128);
-    let id2 = pre.send_tip(&recipient, &200i128);
+    let id1 = pre.send_tip(&sender, &recipient, &100i128);
+    let id2 = pre.send_tip(&sender, &recipient, &200i128);
     assert_eq!(id1, 1);
     assert_eq!(id2, 2);
 
@@ -210,10 +211,11 @@ fn tipping_recipient_totals_survive_upgrade() {
 
     let alice = Address::generate(&env);
     let bob = Address::generate(&env);
+    let sender = Address::generate(&env);
 
-    pre.send_tip(&alice, &500i128);
-    pre.send_tip(&alice, &250i128);
-    pre.send_tip(&bob, &1000i128);
+    pre.send_tip(&sender, &alice, &500i128);
+    pre.send_tip(&sender, &alice, &250i128);
+    pre.send_tip(&sender, &bob, &1000i128);
 
     assert_eq!(
         post.get_tips(&alice),
@@ -278,7 +280,8 @@ fn tipping_fresh_state_survives_upgrade() {
     assert!(!post.is_paused());
 
     // Post-upgrade first tip must still produce settlement_id 1.
+    let sender = Address::generate(&env);
     let recipient = Address::generate(&env);
-    let id = post.send_tip(&recipient, &1i128);
+    let id = post.send_tip(&sender, &recipient, &1i128);
     assert_eq!(id, 1);
 }

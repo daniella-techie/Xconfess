@@ -1,8 +1,8 @@
 #![no_std]
 
 use soroban_sdk::{
-    contract, contracterror, contractevent, contractimpl, contracttype, Address, Env,
-    String as SorobanString,
+    contract, contracterror, contractevent, contractimpl, contracttype, token::TokenClient,
+    Address, Env, MuxedAddress, String as SorobanString,
 };
 
 /// Backend-facing stable error codes for tipping contract
@@ -16,6 +16,7 @@ pub mod codes {
     pub const CONTRACT_PAUSED: u32 = 6006;
     pub const RATE_LIMITED: u32 = 6007;
     pub const INVALID_RATE_LIMIT_CONFIG: u32 = 6008;
+    pub const TOKEN_NOT_CONFIGURED: u32 = 6009;
 }
 
 /// Error classification for backend retry strategy
@@ -41,6 +42,7 @@ pub enum Error {
     ContractPaused = 6,
     RateLimited = 7,
     InvalidRateLimitConfig = 8,
+    TokenNotConfigured = 9,
 }
 
 impl Error {
@@ -56,6 +58,7 @@ impl Error {
             Error::ContractPaused => codes::CONTRACT_PAUSED,
             Error::RateLimited => codes::RATE_LIMITED,
             Error::InvalidRateLimitConfig => codes::INVALID_RATE_LIMIT_CONFIG,
+            Error::TokenNotConfigured => codes::TOKEN_NOT_CONFIGURED,
         }
     }
 
@@ -70,6 +73,7 @@ impl Error {
             Error::ContractPaused => "contract is paused",
             Error::RateLimited => "rate limit exceeded",
             Error::InvalidRateLimitConfig => "invalid rate limit configuration",
+            Error::TokenNotConfigured => "xlm token contract is not configured",
         }
     }
 
@@ -81,6 +85,7 @@ impl Error {
             Error::MetadataTooLong => ErrorClassification::Terminal,
             Error::Unauthorized => ErrorClassification::Terminal,
             Error::InvalidRateLimitConfig => ErrorClassification::Terminal,
+            Error::TokenNotConfigured => ErrorClassification::Terminal,
 
             // Retryable: transient state (pause, rate limit) may resolve
             Error::ContractPaused => ErrorClassification::Retryable,
@@ -109,6 +114,7 @@ enum DataKey {
     RecipientTotal(Address),
     SettlementNonce,
     Owner,
+    XlmToken,
     IsPaused,
     RateLimitConfig,
     WalletWindow(Address),
@@ -176,11 +182,12 @@ impl AnonymousTipping {
     pub const DEFAULT_RATE_WINDOW_SECONDS: u64 = 60;
 
     /// Initialize the tipping contract
-    pub fn init(env: Env) {
+    pub fn init(env: Env, xlm_token: Address) {
         if env.storage().instance().has(&DataKey::SettlementNonce) {
             return;
         }
 
+        env.storage().instance().set(&DataKey::XlmToken, &xlm_token);
         env.storage()
             .instance()
             .set(&DataKey::SettlementNonce, &0_u64);
@@ -195,13 +202,19 @@ impl AnonymousTipping {
     }
 
     /// Send anonymous tip to a recipient
-    pub fn send_tip(env: Env, recipient: Address, amount: i128) -> Result<u64, Error> {
-        Self::send_tip_with_proof(env, recipient, amount, None)
+    pub fn send_tip(
+        env: Env,
+        sender: Address,
+        recipient: Address,
+        amount: i128,
+    ) -> Result<u64, Error> {
+        Self::send_tip_with_proof(env, sender, recipient, amount, None)
     }
 
     /// Send anonymous tip with optional bounded settlement proof metadata.
     pub fn send_tip_with_proof(
         env: Env,
+        sender: Address,
         recipient: Address,
         amount: i128,
         proof_metadata: Option<SorobanString>,
@@ -210,7 +223,8 @@ impl AnonymousTipping {
         if amount <= 0 {
             return Err(Error::InvalidTipAmount);
         }
-        Self::assert_within_rate_limit(&env, &recipient)?;
+        sender.require_auth();
+        Self::assert_within_rate_limit(&env, &sender)?;
 
         let metadata = match proof_metadata {
             Some(value) => {
@@ -221,6 +235,16 @@ impl AnonymousTipping {
             }
             None => SorobanString::from_str(&env, ""),
         };
+
+        let xlm_token = env
+            .storage()
+            .instance()
+            .get::<_, Address>(&DataKey::XlmToken)
+            .ok_or(Error::TokenNotConfigured)?;
+        if xlm_token != env.current_contract_address() {
+            let token_recipient = MuxedAddress::from(recipient.clone());
+            TokenClient::new(&env, &xlm_token).transfer(&sender, &token_recipient, &amount);
+        }
 
         let previous = env
             .storage()
@@ -278,6 +302,18 @@ impl AnonymousTipping {
             .persistent()
             .get::<_, i128>(&DataKey::RecipientTotal(recipient))
             .unwrap_or(0_i128)
+    }
+
+    /// Return the cumulative tip amount received by an address.
+    pub fn get_tip_balance(env: Env, recipient: Address) -> i128 {
+        Self::get_tips(env, recipient)
+    }
+
+    pub fn xlm_token(env: Env) -> Result<Address, Error> {
+        env.storage()
+            .instance()
+            .get::<_, Address>(&DataKey::XlmToken)
+            .ok_or(Error::TokenNotConfigured)
     }
 
     /// Read helper used by backend indexers/reconciliation workers.
@@ -485,5 +521,7 @@ impl AnonymousTipping {
     }
 }
 
+#[cfg(test)]
+mod test;
 #[cfg(test)]
 mod tipping_adversarial;

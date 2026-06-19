@@ -38,7 +38,7 @@ fn setup() -> (
 
     registry.initialize(&admin);
     badges.initialize(&admin);
-    tipping.init();
+    tipping.init(&tipping_id);
 
     (env, registry, badges, tipping, admin, author)
 }
@@ -61,7 +61,7 @@ fn confession_reputation_tipping_happy_path_is_repeatable() {
     );
     assert_eq!(new_rep, 100);
 
-    let settlement_id = tipping.send_tip(&author, &TIP_AMOUNT);
+    let settlement_id = tipping.send_tip(&author, &author, &TIP_AMOUNT);
     assert_eq!(settlement_id, 1);
     assert_eq!(tipping.get_tips(&author), TIP_AMOUNT);
 
@@ -85,6 +85,7 @@ fn flagged_confession_flow_keeps_cross_contract_state_consistent() {
     assert_eq!(badge_id, 1);
 
     let settlement_id = tipping.send_tip_with_proof(
+        &author,
         &author,
         &TIP_AMOUNT,
         &Some(String::from_str(&env, "cross-contract moderation fixture")),

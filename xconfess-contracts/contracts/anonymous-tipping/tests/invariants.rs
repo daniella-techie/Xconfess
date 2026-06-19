@@ -29,7 +29,7 @@ fn setup() -> (Env, AnonymousTippingClient<'static>) {
     env.mock_all_auths();
     let id = env.register(AnonymousTipping, ());
     let client = AnonymousTippingClient::new(&env, &id);
-    client.init();
+    client.init(&id);
     (env, client)
 }
 
@@ -53,7 +53,7 @@ fn recipient_total_equals_sum_of_tips() {
     let expected: i128 = amounts.iter().sum();
 
     for &a in amounts {
-        client.send_tip(&alice, &a);
+        client.send_tip(&Address::generate(&env), &alice, &a);
     }
 
     assert_eq!(
@@ -76,12 +76,12 @@ fn balance_conservation_holds_across_multiple_recipients() {
     let carol_tips: &[i128] = &[42];
 
     // Interleave deliberately to ensure no cross-contamination
-    client.send_tip(&alice, &alice_tips[0]);
-    client.send_tip(&bob, &bob_tips[0]);
-    client.send_tip(&carol, &carol_tips[0]);
-    client.send_tip(&alice, &alice_tips[1]);
-    client.send_tip(&bob, &bob_tips[1]);
-    client.send_tip(&alice, &alice_tips[2]);
+    client.send_tip(&Address::generate(&env), &alice, &alice_tips[0]);
+    client.send_tip(&Address::generate(&env), &bob, &bob_tips[0]);
+    client.send_tip(&Address::generate(&env), &carol, &carol_tips[0]);
+    client.send_tip(&Address::generate(&env), &alice, &alice_tips[1]);
+    client.send_tip(&Address::generate(&env), &bob, &bob_tips[1]);
+    client.send_tip(&Address::generate(&env), &alice, &alice_tips[2]);
 
     assert_eq!(client.get_tips(&alice), 350i128, "I1: alice total");
     assert_eq!(client.get_tips(&bob), 1000i128, "I1: bob total");
@@ -98,7 +98,7 @@ fn settlement_nonce_strictly_monotonic() {
 
     let mut prev = 0u64;
     for _ in 0..10 {
-        let id = client.send_tip(&recipient, &1i128);
+        let id = client.send_tip(&Address::generate(&env), &recipient, &1i128);
         assert_eq!(id, prev + 1, "I2: each settlement_id must be prev + 1");
         prev = id;
     }
@@ -111,9 +111,9 @@ fn nonce_monotonic_across_different_recipients() {
     let r1 = Address::generate(&env);
     let r2 = Address::generate(&env);
 
-    let id1 = client.send_tip(&r1, &1i128);
-    let id2 = client.send_tip(&r2, &1i128);
-    let id3 = client.send_tip(&r1, &1i128);
+    let id1 = client.send_tip(&Address::generate(&env), &r1, &1i128);
+    let id2 = client.send_tip(&Address::generate(&env), &r2, &1i128);
+    let id3 = client.send_tip(&Address::generate(&env), &r1, &1i128);
 
     assert!(id2 > id1, "I2: id2 must exceed id1");
     assert!(id3 > id2, "I2: id3 must exceed id2");
@@ -131,7 +131,7 @@ fn nonce_equals_total_successful_settlements() {
     assert_eq!(client.latest_settlement_nonce(), 0, "I3: nonce starts at 0");
 
     for n in 1u64..=20 {
-        client.send_tip(&recipient, &(n as i128));
+        client.send_tip(&Address::generate(&env), &recipient, &(n as i128));
         assert_eq!(
             client.latest_settlement_nonce(),
             n,
@@ -146,12 +146,12 @@ fn failed_tips_do_not_advance_nonce() {
     let (env, client) = setup();
     let recipient = Address::generate(&env);
 
-    client.send_tip(&recipient, &5i128);
+    client.send_tip(&Address::generate(&env), &recipient, &5i128);
     let nonce_before = client.latest_settlement_nonce();
 
     // Invalid amount — must fail without touching nonce
-    let _ = client.try_send_tip(&recipient, &0i128);
-    let _ = client.try_send_tip(&recipient, &(-1i128));
+    let _ = client.try_send_tip(&Address::generate(&env), &recipient, &0i128);
+    let _ = client.try_send_tip(&Address::generate(&env), &recipient, &(-1i128));
 
     assert_eq!(
         client.latest_settlement_nonce(),
@@ -172,7 +172,7 @@ fn recipient_total_never_decreases() {
     let mut prev_total: i128 = 0;
     let amounts: &[i128] = &[100, 1, 999, 50, 200];
     for &a in amounts {
-        client.send_tip(&recipient, &a);
+        client.send_tip(&Address::generate(&env), &recipient, &a);
         let new_total = client.get_tips(&recipient);
         assert!(
             new_total >= prev_total,
@@ -194,7 +194,7 @@ fn tip_accumulation_exact_no_rounding() {
     let unit: i128 = 7; // prime to surface any rounding
     let n: u32 = 100;
     for _ in 0..n {
-        client.send_tip(&recipient, &unit);
+        client.send_tip(&Address::generate(&env), &recipient, &unit);
     }
 
     assert_eq!(
@@ -213,7 +213,7 @@ fn odd_amounts_accumulate_without_rounding() {
     let amounts: &[i128] = &[3, 7, 11, 13, 17, 19, 23];
     let expected: i128 = amounts.iter().sum();
     for &a in amounts {
-        client.send_tip(&recipient, &a);
+        client.send_tip(&Address::generate(&env), &recipient, &a);
     }
 
     assert_eq!(
@@ -230,7 +230,7 @@ fn unit_tip_precision() {
     let recipient = Address::generate(&env);
 
     for i in 1i128..=50 {
-        client.send_tip(&recipient, &1i128);
+        client.send_tip(&Address::generate(&env), &recipient, &1i128);
         assert_eq!(client.get_tips(&recipient), i, "I5: unit tip count == {i}");
     }
 }
@@ -246,14 +246,15 @@ fn rate_limit_blocks_at_exact_window_cap() {
     client.configure_controls(&owner, &cap, &60u64);
 
     let wallet = Address::generate(&env);
+    let recipient = Address::generate(&env);
     for i in 0..cap {
-        let result = client.try_send_tip(&wallet, &1i128);
+        let result = client.try_send_tip(&wallet, &recipient, &1i128);
         assert!(result.is_ok(), "I6: tip {} (of {cap}) must succeed", i + 1);
     }
 
     // The very next tip must be rate-limited
     assert_eq!(
-        client.try_send_tip(&wallet, &1i128),
+        client.try_send_tip(&wallet, &recipient, &1i128),
         Err(Ok(Error::RateLimited)),
         "I6: tip {} must be blocked by rate limit",
         cap + 1
@@ -269,17 +270,18 @@ fn rate_limit_is_per_wallet_not_global() {
 
     let wallet_a = Address::generate(&env);
     let wallet_b = Address::generate(&env);
+    let recipient = Address::generate(&env);
 
     // wallet_a exhausts its window
-    assert!(client.try_send_tip(&wallet_a, &1i128).is_ok());
+    assert!(client.try_send_tip(&wallet_a, &recipient, &1i128).is_ok());
     assert_eq!(
-        client.try_send_tip(&wallet_a, &1i128),
+        client.try_send_tip(&wallet_a, &recipient, &1i128),
         Err(Ok(Error::RateLimited))
     );
 
     // wallet_b is unaffected
     assert!(
-        client.try_send_tip(&wallet_b, &1i128).is_ok(),
+        client.try_send_tip(&wallet_b, &recipient, &1i128).is_ok(),
         "I6: wallet_b must not be affected by wallet_a's rate exhaustion"
     );
 }
@@ -294,7 +296,7 @@ fn pause_blocks_all_mutations() {
     let recipient = Address::generate(&env);
 
     // Establish baseline state
-    client.send_tip(&recipient, &10i128);
+    client.send_tip(&Address::generate(&env), &recipient, &10i128);
     let baseline_total = client.get_tips(&recipient);
     let baseline_nonce = client.latest_settlement_nonce();
 
@@ -303,12 +305,12 @@ fn pause_blocks_all_mutations() {
 
     // Both tip variants must be blocked
     assert_eq!(
-        client.try_send_tip(&recipient, &1i128),
+        client.try_send_tip(&Address::generate(&env), &recipient, &1i128),
         Err(Ok(Error::ContractPaused)),
         "I7: send_tip must fail while paused"
     );
     assert_eq!(
-        client.try_send_tip_with_proof(&recipient, &1i128, &None),
+        client.try_send_tip_with_proof(&Address::generate(&env), &recipient, &1i128, &None),
         Err(Ok(Error::ContractPaused)),
         "I7: send_tip_with_proof must fail while paused"
     );
@@ -341,7 +343,7 @@ fn unpause_restores_settlement_invariant() {
     client.pause(&owner, &SorobanString::from_str(&env, "incident"));
     client.unpause(&owner, &SorobanString::from_str(&env, "resolved"));
 
-    let id = client.send_tip(&recipient, &42i128);
+    let id = client.send_tip(&Address::generate(&env), &recipient, &42i128);
     assert_eq!(
         id, 1,
         "I7: first tip after unpause must get settlement_id 1"
@@ -361,8 +363,8 @@ fn invalid_amounts_never_mutate_state() {
 
     let invalid_amounts: &[i128] = &[0, -1, -100, i128::MIN, i128::MIN + 1];
     for &a in invalid_amounts {
-        let _ = client.try_send_tip(&recipient, &a);
-        let _ = client.try_send_tip_with_proof(&recipient, &a, &None);
+        let _ = client.try_send_tip(&Address::generate(&env), &recipient, &a);
+        let _ = client.try_send_tip_with_proof(&Address::generate(&env), &recipient, &a, &None);
     }
 
     assert_eq!(
@@ -387,11 +389,11 @@ fn overflow_returns_error_not_silent_corruption() {
     let recipient = Address::generate(&env);
 
     // Load total to near max
-    client.send_tip(&recipient, &(i128::MAX - 50));
+    client.send_tip(&Address::generate(&env), &recipient, &(i128::MAX - 50));
     let pre_overflow_total = client.get_tips(&recipient);
 
     // This would overflow — must be rejected
-    let result = client.try_send_tip(&recipient, &100i128);
+    let result = client.try_send_tip(&Address::generate(&env), &recipient, &100i128);
     assert_eq!(
         result,
         Err(Ok(Error::TotalOverflow)),
@@ -412,9 +414,9 @@ fn overflow_by_one_is_caught() {
     let (env, client) = setup();
     let recipient = Address::generate(&env);
 
-    client.send_tip(&recipient, &i128::MAX);
+    client.send_tip(&Address::generate(&env), &recipient, &i128::MAX);
 
-    let result = client.try_send_tip(&recipient, &1i128);
+    let result = client.try_send_tip(&Address::generate(&env), &recipient, &1i128);
     assert_eq!(
         result,
         Err(Ok(Error::TotalOverflow)),
@@ -432,7 +434,7 @@ fn recipients_are_mutually_isolated() {
 
     // Tip only the first recipient
     for _ in 0..10 {
-        client.send_tip(&recipients[0], &1i128);
+        client.send_tip(&Address::generate(&env), &recipients[0], &1i128);
     }
 
     // All other recipients must remain at 0
@@ -457,7 +459,7 @@ fn round_robin_tipping_preserves_per_recipient_isolation() {
 
     for _ in 0..rounds {
         for r in &recipients {
-            client.send_tip(r, &amount);
+            client.send_tip(&Address::generate(&env), r, &amount);
         }
     }
 
@@ -480,8 +482,8 @@ fn send_tip_and_proof_none_identical_invariant() {
     let r1 = Address::generate(&env);
     let r2 = Address::generate(&env);
 
-    client.send_tip(&r1, &77i128);
-    client.send_tip_with_proof(&r2, &77i128, &None);
+    client.send_tip(&Address::generate(&env), &r1, &77i128);
+    client.send_tip_with_proof(&Address::generate(&env), &r2, &77i128, &None);
 
     assert_eq!(
         client.get_tips(&r1),
@@ -508,8 +510,8 @@ fn global_tip_count_coherent_with_nonce() {
     let recipient = Address::generate(&env);
 
     // Establish pre-migration nonce
-    client.send_tip(&recipient, &1i128);
-    client.send_tip(&recipient, &1i128);
+    client.send_tip(&Address::generate(&env), &recipient, &1i128);
+    client.send_tip(&Address::generate(&env), &recipient, &1i128);
     let nonce_at_migration = client.latest_settlement_nonce();
 
     client.migrate(&owner);
@@ -517,7 +519,7 @@ fn global_tip_count_coherent_with_nonce() {
     // Post-migration tips
     let post_tips = 7u64;
     for _ in 0..post_tips {
-        client.send_tip(&recipient, &1i128);
+        client.send_tip(&Address::generate(&env), &recipient, &1i128);
     }
 
     assert_eq!(
@@ -540,7 +542,7 @@ fn global_tip_count_not_incremented_by_failed_tip_post_migration() {
     client.migrate(&owner);
 
     // Failed tip
-    let _ = client.try_send_tip(&recipient, &0i128);
+    let _ = client.try_send_tip(&Address::generate(&env), &recipient, &0i128);
     assert_eq!(
         client.global_tip_count(),
         0,
@@ -560,12 +562,18 @@ fn metadata_length_boundary_exact() {
 
     // Exactly at the boundary — must succeed
     let ok_meta = SorobanString::from_str(&env, &std::string::String::from("x").repeat(max));
-    let sid = client.send_tip_with_proof(&recipient, &1i128, &Some(ok_meta));
+    let sid =
+        client.send_tip_with_proof(&Address::generate(&env), &recipient, &1i128, &Some(ok_meta));
     assert_eq!(sid, 1);
 
     // One over the boundary — must fail
     let over_meta = SorobanString::from_str(&env, &std::string::String::from("x").repeat(max + 1));
-    let result = client.try_send_tip_with_proof(&recipient, &1i128, &Some(over_meta));
+    let result = client.try_send_tip_with_proof(
+        &Address::generate(&env),
+        &recipient,
+        &1i128,
+        &Some(over_meta),
+    );
     assert_eq!(result, Err(Ok(Error::MetadataTooLong)));
 
     // Total must only reflect the one successful tip

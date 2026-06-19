@@ -78,7 +78,7 @@ pub mod codes {
     pub const INVALID_ACTION: u32 = 5005;
 
     /// ====== Anonymous Tipping Contract Errors (6000-6099) ======
-    /// Mapped from enum values 1-8 to stable 6000-series for backend consumption
+    /// Mapped from enum values 1-9 to stable 6000-series for backend consumption
     pub const TIPPING_INVALID_AMOUNT: u32 = 6001;
     pub const TIPPING_METADATA_TOO_LONG: u32 = 6002;
     pub const TIPPING_TOTAL_OVERFLOW: u32 = 6003;
@@ -87,6 +87,7 @@ pub mod codes {
     pub const TIPPING_CONTRACT_PAUSED: u32 = 6006;
     pub const TIPPING_RATE_LIMITED: u32 = 6007;
     pub const TIPPING_INVALID_RATE_LIMIT_CONFIG: u32 = 6008;
+    pub const TIPPING_TOKEN_NOT_CONFIGURED: u32 = 6009;
 }
 
 /// ============================================================================

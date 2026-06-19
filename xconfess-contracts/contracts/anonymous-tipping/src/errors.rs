@@ -11,6 +11,7 @@ pub mod codes {
     pub const CONTRACT_PAUSED: u32 = 6006;
     pub const RATE_LIMITED: u32 = 6007;
     pub const INVALID_RATE_LIMIT_CONFIG: u32 = 6008;
+    pub const TOKEN_NOT_CONFIGURED: u32 = 6009;
 }
 
 /// Error classification for backend retry strategy

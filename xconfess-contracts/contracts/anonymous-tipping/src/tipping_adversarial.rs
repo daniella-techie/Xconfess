@@ -20,7 +20,7 @@ mod adversarial {
         let env = Env::default();
         env.mock_all_auths();
         let contract_id = env.register(AnonymousTipping, ());
-        AnonymousTippingClient::new(&env, &contract_id).init();
+        AnonymousTippingClient::new(&env, &contract_id).init(&contract_id);
         (env, contract_id)
     }
 
@@ -39,7 +39,7 @@ mod adversarial {
         let (env, id) = setup();
         let c = mk_client(&env, &id);
         let recipient = Address::generate(&env);
-        let r = c.try_send_tip(&recipient, &0i128);
+        let r = c.try_send_tip(&Address::generate(&env), &recipient, &0i128);
         assert_eq!(r, Err(Ok(Error::InvalidTipAmount)));
     }
 
@@ -50,7 +50,7 @@ mod adversarial {
         let (env, id) = setup();
         let c = mk_client(&env, &id);
         let recipient = Address::generate(&env);
-        let r = c.try_send_tip(&recipient, &(-1i128));
+        let r = c.try_send_tip(&Address::generate(&env), &recipient, &(-1i128));
         assert_eq!(r, Err(Ok(Error::InvalidTipAmount)));
     }
 
@@ -59,7 +59,7 @@ mod adversarial {
         let (env, id) = setup();
         let c = mk_client(&env, &id);
         let recipient = Address::generate(&env);
-        let r = c.try_send_tip(&recipient, &(-1_000_000i128));
+        let r = c.try_send_tip(&Address::generate(&env), &recipient, &(-1_000_000i128));
         assert_eq!(r, Err(Ok(Error::InvalidTipAmount)));
     }
 
@@ -68,7 +68,7 @@ mod adversarial {
         let (env, id) = setup();
         let c = mk_client(&env, &id);
         let recipient = Address::generate(&env);
-        let r = c.try_send_tip(&recipient, &i128::MIN);
+        let r = c.try_send_tip(&Address::generate(&env), &recipient, &i128::MIN);
         assert_eq!(r, Err(Ok(Error::InvalidTipAmount)));
     }
 
@@ -78,7 +78,12 @@ mod adversarial {
         let c = mk_client(&env, &id);
         let recipient = Address::generate(&env);
         let m = meta(&env, 10);
-        let r = c.try_send_tip_with_proof(&recipient, &0i128, &Some(m.clone()));
+        let r = c.try_send_tip_with_proof(
+            &Address::generate(&env),
+            &recipient,
+            &0i128,
+            &Some(m.clone()),
+        );
         assert_eq!(r, Err(Ok(Error::InvalidTipAmount)));
     }
 
@@ -88,7 +93,12 @@ mod adversarial {
         let c = mk_client(&env, &id);
         let recipient = Address::generate(&env);
         let m = meta(&env, 10);
-        let r = c.try_send_tip_with_proof(&recipient, &(-42i128), &Some(m.clone()));
+        let r = c.try_send_tip_with_proof(
+            &Address::generate(&env),
+            &recipient,
+            &(-42i128),
+            &Some(m.clone()),
+        );
         assert_eq!(r, Err(Ok(Error::InvalidTipAmount)));
     }
 
@@ -100,7 +110,7 @@ mod adversarial {
         let c = mk_client(&env, &id);
         let recipient = Address::generate(&env);
         let m = meta(&env, 0);
-        let sid = c.send_tip_with_proof(&recipient, &1i128, &Some(m));
+        let sid = c.send_tip_with_proof(&Address::generate(&env), &recipient, &1i128, &Some(m));
         assert_eq!(sid, 1);
         assert_eq!(c.get_tips(&recipient), 1);
     }
@@ -111,7 +121,7 @@ mod adversarial {
         let c = mk_client(&env, &id);
         let recipient = Address::generate(&env);
         let m = meta(&env, 64);
-        let sid = c.send_tip_with_proof(&recipient, &5i128, &Some(m));
+        let sid = c.send_tip_with_proof(&Address::generate(&env), &recipient, &5i128, &Some(m));
         assert_eq!(sid, 1);
         assert_eq!(c.get_tips(&recipient), 5);
     }
@@ -122,7 +132,7 @@ mod adversarial {
         let c = mk_client(&env, &id);
         let recipient = Address::generate(&env);
         let m = meta(&env, 127);
-        let sid = c.send_tip_with_proof(&recipient, &1i128, &Some(m));
+        let sid = c.send_tip_with_proof(&Address::generate(&env), &recipient, &1i128, &Some(m));
         assert_eq!(sid, 1);
     }
 
@@ -132,7 +142,7 @@ mod adversarial {
         let c = mk_client(&env, &id);
         let recipient = Address::generate(&env);
         let m = meta(&env, AnonymousTipping::MAX_PROOF_METADATA_LEN as usize);
-        let sid = c.send_tip_with_proof(&recipient, &7i128, &Some(m));
+        let sid = c.send_tip_with_proof(&Address::generate(&env), &recipient, &7i128, &Some(m));
         assert_eq!(sid, 1);
         assert_eq!(c.get_tips(&recipient), 7);
     }
@@ -146,7 +156,12 @@ mod adversarial {
             &env,
             (AnonymousTipping::MAX_PROOF_METADATA_LEN + 1) as usize,
         );
-        let r = c.try_send_tip_with_proof(&recipient, &1i128, &Some(m.clone()));
+        let r = c.try_send_tip_with_proof(
+            &Address::generate(&env),
+            &recipient,
+            &1i128,
+            &Some(m.clone()),
+        );
         assert_eq!(r, Err(Ok(Error::MetadataTooLong)));
     }
 
@@ -156,7 +171,12 @@ mod adversarial {
         let c = mk_client(&env, &id);
         let recipient = Address::generate(&env);
         let m = meta(&env, 256);
-        let r = c.try_send_tip_with_proof(&recipient, &1i128, &Some(m.clone()));
+        let r = c.try_send_tip_with_proof(
+            &Address::generate(&env),
+            &recipient,
+            &1i128,
+            &Some(m.clone()),
+        );
         assert_eq!(r, Err(Ok(Error::MetadataTooLong)));
     }
 
@@ -166,7 +186,12 @@ mod adversarial {
         let c = mk_client(&env, &id);
         let recipient = Address::generate(&env);
         let m = meta(&env, 1024);
-        let r = c.try_send_tip_with_proof(&recipient, &1i128, &Some(m.clone()));
+        let r = c.try_send_tip_with_proof(
+            &Address::generate(&env),
+            &recipient,
+            &1i128,
+            &Some(m.clone()),
+        );
         assert_eq!(r, Err(Ok(Error::MetadataTooLong)));
     }
 
@@ -179,9 +204,9 @@ mod adversarial {
         let r1 = Address::generate(&env);
         let r2 = Address::generate(&env);
 
-        let id1 = c.send_tip(&r1, &1i128);
-        let id2 = c.send_tip(&r2, &1i128);
-        let id3 = c.send_tip(&r1, &1i128);
+        let id1 = c.send_tip(&Address::generate(&env), &r1, &1i128);
+        let id2 = c.send_tip(&Address::generate(&env), &r2, &1i128);
+        let id3 = c.send_tip(&Address::generate(&env), &r1, &1i128);
 
         assert_eq!(id1, 1);
         assert_eq!(id2, 2);
@@ -197,9 +222,9 @@ mod adversarial {
         let c = mk_client(&env, &id);
         let recipient = Address::generate(&env);
 
-        c.send_tip(&recipient, &10i128);
-        c.send_tip(&recipient, &25i128);
-        c.send_tip(&recipient, &5i128);
+        c.send_tip(&Address::generate(&env), &recipient, &10i128);
+        c.send_tip(&Address::generate(&env), &recipient, &25i128);
+        c.send_tip(&Address::generate(&env), &recipient, &5i128);
 
         assert_eq!(c.get_tips(&recipient), 40);
     }
@@ -211,8 +236,8 @@ mod adversarial {
         let r1 = Address::generate(&env);
         let r2 = Address::generate(&env);
 
-        c.send_tip(&r1, &100i128);
-        c.send_tip(&r2, &200i128);
+        c.send_tip(&Address::generate(&env), &r1, &100i128);
+        c.send_tip(&Address::generate(&env), &r2, &200i128);
 
         assert_eq!(c.get_tips(&r1), 100);
         assert_eq!(c.get_tips(&r2), 200);
@@ -226,7 +251,7 @@ mod adversarial {
         let c = mk_client(&env, &id);
         for i in 1_u64..=10 {
             let recipient = Address::generate(&env);
-            let sid = c.send_tip(&recipient, &(i as i128));
+            let sid = c.send_tip(&Address::generate(&env), &recipient, &(i as i128));
             assert_eq!(sid, i);
         }
         assert_eq!(c.latest_settlement_nonce(), 10);
@@ -239,9 +264,9 @@ mod adversarial {
         let (env, id) = setup(); // already calls init once
         let c = mk_client(&env, &id);
         let recipient = Address::generate(&env);
-        c.send_tip(&recipient, &1i128);
+        c.send_tip(&Address::generate(&env), &recipient, &1i128);
 
-        c.init(); // second init must not reset state
+        c.init(&id); // second init must not reset state
 
         assert_eq!(c.get_tips(&recipient), 1);
         assert_eq!(c.latest_settlement_nonce(), 1);
@@ -254,13 +279,13 @@ mod adversarial {
         let env = Env::default();
         let contract_id = env.register(AnonymousTipping, ());
         let c = mk_client(&env, &contract_id);
-        c.init();
+        c.init(&contract_id);
 
         let r1 = Address::generate(&env);
         let r2 = Address::generate(&env);
 
-        c.send_tip(&r1, &42i128);
-        c.send_tip_with_proof(&r2, &42i128, &None);
+        c.send_tip(&Address::generate(&env), &r1, &42i128);
+        c.send_tip_with_proof(&Address::generate(&env), &r2, &42i128, &None);
 
         assert_eq!(c.get_tips(&r1), c.get_tips(&r2));
     }
@@ -268,15 +293,15 @@ mod adversarial {
     // ── uninitialised contract still works ───────────────────────────────────
 
     #[test]
-    fn tip_without_explicit_init_still_succeeds() {
+    fn tip_without_explicit_init_returns_token_configuration_error() {
         let env = Env::default();
         let contract_id = env.register(AnonymousTipping, ());
         let c = mk_client(&env, &contract_id);
-        // No c.init() call — storage defaults to 0 via `unwrap_or`
+        // No c.init(&id) call — storage defaults to 0 via `unwrap_or`
         let recipient = Address::generate(&env);
-        let sid = c.send_tip(&recipient, &3i128);
-        assert_eq!(sid, 1);
-        assert_eq!(c.get_tips(&recipient), 3);
+        let result = c.try_send_tip(&Address::generate(&env), &recipient, &3i128);
+        assert_eq!(result, Err(Ok(Error::TokenNotConfigured)));
+        assert_eq!(c.get_tips(&recipient), 0);
     }
 
     // ── unknown recipient returns zero ────────────────────────────────────────
@@ -297,7 +322,7 @@ mod adversarial {
         let c = mk_client(&env, &id);
         let recipient = Address::generate(&env);
         let amount: i128 = 1_000_000_000_000;
-        let sid = c.send_tip(&recipient, &amount);
+        let sid = c.send_tip(&Address::generate(&env), &recipient, &amount);
         assert_eq!(sid, 1);
         assert_eq!(c.get_tips(&recipient), amount);
     }
@@ -307,7 +332,7 @@ mod adversarial {
         let (env, id) = setup();
         let c = mk_client(&env, &id);
         let recipient = Address::generate(&env);
-        let sid = c.send_tip(&recipient, &1i128);
+        let sid = c.send_tip(&Address::generate(&env), &recipient, &1i128);
         assert_eq!(sid, 1);
         assert_eq!(c.get_tips(&recipient), 1);
     }
@@ -321,10 +346,10 @@ mod adversarial {
         let recipient = Address::generate(&env);
 
         // Send a tip that brings total to near max
-        c.send_tip(&recipient, &(i128::MAX - 100));
+        c.send_tip(&Address::generate(&env), &recipient, &(i128::MAX - 100));
 
         // Next tip should overflow
-        let r = c.try_send_tip(&recipient, &200i128);
+        let r = c.try_send_tip(&Address::generate(&env), &recipient, &200i128);
         assert_eq!(r, Err(Ok(Error::TotalOverflow)));
     }
 
@@ -342,7 +367,7 @@ mod adversarial {
         });
 
         // Next tip should overflow nonce
-        let r = c.try_send_tip(&recipient, &1i128);
+        let r = c.try_send_tip(&Address::generate(&env), &recipient, &1i128);
         assert_eq!(r, Err(Ok(Error::NonceOverflow)));
     }
 
@@ -358,7 +383,12 @@ mod adversarial {
         let unicode_str = "🚀💰测试🔥";
         let metadata = SorobanString::from_str(&env, unicode_str);
 
-        let sid = c.send_tip_with_proof(&recipient, &5i128, &Some(metadata));
+        let sid = c.send_tip_with_proof(
+            &Address::generate(&env),
+            &recipient,
+            &5i128,
+            &Some(metadata),
+        );
         assert_eq!(sid, 1);
         assert_eq!(c.get_tips(&recipient), 5);
     }
@@ -373,7 +403,12 @@ mod adversarial {
         let whitespace_str = " \t\n\r ";
         let metadata = SorobanString::from_str(&env, whitespace_str);
 
-        let sid = c.send_tip_with_proof(&recipient, &3i128, &Some(metadata));
+        let sid = c.send_tip_with_proof(
+            &Address::generate(&env),
+            &recipient,
+            &3i128,
+            &Some(metadata),
+        );
         assert_eq!(sid, 1);
         assert_eq!(c.get_tips(&recipient), 3);
     }
@@ -388,7 +423,7 @@ mod adversarial {
 
         // Test with maximum valid amount (less than would cause overflow)
         let max_amount = i128::MAX / 2;
-        let sid = c.send_tip(&recipient, &max_amount);
+        let sid = c.send_tip(&Address::generate(&env), &recipient, &max_amount);
         assert_eq!(sid, 1);
         assert_eq!(c.get_tips(&recipient), max_amount);
     }
@@ -404,13 +439,13 @@ mod adversarial {
         c.pause(&owner, &SorobanString::from_str(&env, "incident"));
         assert!(c.is_paused());
         assert_eq!(
-            c.try_send_tip(&recipient, &1),
+            c.try_send_tip(&Address::generate(&env), &recipient, &1),
             Err(Ok(Error::ContractPaused))
         );
 
         c.unpause(&owner, &SorobanString::from_str(&env, "resolved"));
         assert!(!c.is_paused());
-        assert_eq!(c.send_tip(&recipient, &2), 1);
+        assert_eq!(c.send_tip(&Address::generate(&env), &recipient, &2), 1);
     }
 
     #[test]
@@ -419,12 +454,16 @@ mod adversarial {
         let c = mk_client(&env, &id);
         let owner = Address::generate(&env);
         let recipient = Address::generate(&env);
+        let sender = Address::generate(&env);
 
         c.configure_controls(&owner, &2, &60);
 
-        assert_eq!(c.send_tip(&recipient, &1), 1);
-        assert_eq!(c.send_tip(&recipient, &1), 2);
-        assert_eq!(c.try_send_tip(&recipient, &1), Err(Ok(Error::RateLimited)));
+        assert_eq!(c.send_tip(&sender, &recipient, &1), 1);
+        assert_eq!(c.send_tip(&sender, &recipient, &1), 2);
+        assert_eq!(
+            c.try_send_tip(&sender, &recipient, &1),
+            Err(Ok(Error::RateLimited))
+        );
     }
 }
 
@@ -442,7 +481,7 @@ mod replay_correlation {
         let env = Env::default();
         env.mock_all_auths();
         let contract_id = env.register(AnonymousTipping, ());
-        AnonymousTippingClient::new(&env, &contract_id).init();
+        AnonymousTippingClient::new(&env, &contract_id).init(&contract_id);
         (env, contract_id)
     }
 
@@ -458,9 +497,9 @@ mod replay_correlation {
         let c = mk_client(&env, &id);
         let recipient = Address::generate(&env);
 
-        let id1 = c.send_tip(&recipient, &10);
-        let id2 = c.send_tip(&recipient, &20);
-        let id3 = c.send_tip(&recipient, &30);
+        let id1 = c.send_tip(&Address::generate(&env), &recipient, &10);
+        let id2 = c.send_tip(&Address::generate(&env), &recipient, &20);
+        let id3 = c.send_tip(&Address::generate(&env), &recipient, &30);
 
         assert!(id2 > id1, "settlement_id must increment: {} > {}", id2, id1);
         assert!(id3 > id2, "settlement_id must increment: {} > {}", id3, id2);
@@ -475,8 +514,8 @@ mod replay_correlation {
         let c = mk_client(&env, &id);
         let recipient = Address::generate(&env);
 
-        let first = c.send_tip(&recipient, &100);
-        let second = c.send_tip(&recipient, &100);
+        let first = c.send_tip(&Address::generate(&env), &recipient, &100);
+        let second = c.send_tip(&Address::generate(&env), &recipient, &100);
 
         assert_ne!(
             first, second,
@@ -495,13 +534,13 @@ mod replay_correlation {
 
         assert_eq!(c.latest_settlement_nonce(), 0, "nonce starts at 0");
 
-        c.send_tip(&recipient, &1);
+        c.send_tip(&Address::generate(&env), &recipient, &1);
         assert_eq!(c.latest_settlement_nonce(), 1);
 
-        c.send_tip(&recipient, &2);
+        c.send_tip(&Address::generate(&env), &recipient, &2);
         assert_eq!(c.latest_settlement_nonce(), 2);
 
-        c.send_tip(&recipient, &3);
+        c.send_tip(&Address::generate(&env), &recipient, &3);
         assert_eq!(c.latest_settlement_nonce(), 3);
 
         // Simulate replay detection: an event with settlement_id == 2 while
@@ -526,9 +565,9 @@ mod replay_correlation {
         let bob = Address::generate(&env);
         let carol = Address::generate(&env);
 
-        let id_a = c.send_tip(&alice, &10);
-        let id_b = c.send_tip(&bob, &20);
-        let id_c = c.send_tip(&carol, &30);
+        let id_a = c.send_tip(&Address::generate(&env), &alice, &10);
+        let id_b = c.send_tip(&Address::generate(&env), &bob, &20);
+        let id_c = c.send_tip(&Address::generate(&env), &carol, &30);
 
         // All settlement_ids come from the same sequence regardless of recipient.
         assert_eq!(id_a, 1);

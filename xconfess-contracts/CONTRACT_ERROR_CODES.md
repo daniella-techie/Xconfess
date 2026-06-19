@@ -137,6 +137,7 @@ Unknown error codes (not in this registry) are treated as terminal failures. Thi
 | 6006 | `CONTRACT_PAUSED` | Retryable | Tipping contract is paused | 503 |
 | 6007 | `RATE_LIMITED` | Retryable | Rate limit exceeded for this recipient | 503 |
 | 6008 | `INVALID_RATE_LIMIT_CONFIG` | Terminal | Invalid rate limit configuration | 400 |
+| 6009 | `TOKEN_NOT_CONFIGURED` | Terminal | XLM token contract is not configured | 500 |
 
 ## Backend Integration Guide
 
@@ -237,7 +238,7 @@ app.get('/api/confessions/:id', async (req, res) => {
 #### Version 1 (Current)
 - Initial stable registry
 - 21 anchor contract errors (1000–5005)
-- 8 tipping contract errors (6001–6008)
+- 9 tipping contract errors (6001–6009)
 - Classification system (Retryable, Terminal, Unknown)
 
 ### Future Changes

@@ -23,7 +23,7 @@ fn setup() -> (Env, Address, AnonymousTippingClient<'static>) {
     env.mock_all_auths();
     let id = env.register(AnonymousTipping, ());
     let client = AnonymousTippingClient::new(&env, &id);
-    client.init();
+    client.init(&id);
     (env, id, client)
 }
 
@@ -97,9 +97,9 @@ fn migration_preserves_pre_existing_recipient_totals() {
     let bob = Address::generate(&env);
 
     // Send tips before migration (fixture B state)
-    let id1 = client.send_tip(&alice, &100i128);
-    let id2 = client.send_tip(&alice, &50i128);
-    let id3 = client.send_tip(&bob, &200i128);
+    let id1 = client.send_tip(&Address::generate(&env), &alice, &100i128);
+    let id2 = client.send_tip(&Address::generate(&env), &alice, &50i128);
+    let id3 = client.send_tip(&Address::generate(&env), &bob, &200i128);
     assert_eq!(id1, 1);
     assert_eq!(id2, 2);
     assert_eq!(id3, 3);
@@ -131,9 +131,9 @@ fn global_tip_count_starts_at_zero_post_migration_not_backfilled() {
     let alice = Address::generate(&env);
 
     // 3 tips before migration
-    client.send_tip(&alice, &10i128);
-    client.send_tip(&alice, &10i128);
-    client.send_tip(&alice, &10i128);
+    client.send_tip(&Address::generate(&env), &alice, &10i128);
+    client.send_tip(&Address::generate(&env), &alice, &10i128);
+    client.send_tip(&Address::generate(&env), &alice, &10i128);
 
     client.migrate(&owner);
 
@@ -144,8 +144,8 @@ fn global_tip_count_starts_at_zero_post_migration_not_backfilled() {
     );
 
     // 2 tips after migration
-    client.send_tip(&alice, &5i128);
-    client.send_tip(&alice, &5i128);
+    client.send_tip(&Address::generate(&env), &alice, &5i128);
+    client.send_tip(&Address::generate(&env), &alice, &5i128);
 
     assert_eq!(
         client.global_tip_count(),
@@ -163,7 +163,7 @@ fn global_tip_count_increments_by_one_per_successful_tip() {
 
     let recipient = Address::generate(&env);
     for expected in 1u64..=5 {
-        client.send_tip(&recipient, &1i128);
+        client.send_tip(&Address::generate(&env), &recipient, &1i128);
         assert_eq!(
             client.global_tip_count(),
             expected,
@@ -182,9 +182,9 @@ fn global_tip_count_spans_multiple_recipients() {
     let alice = Address::generate(&env);
     let bob = Address::generate(&env);
 
-    client.send_tip(&alice, &1i128);
-    client.send_tip(&bob, &1i128);
-    client.send_tip(&alice, &1i128);
+    client.send_tip(&Address::generate(&env), &alice, &1i128);
+    client.send_tip(&Address::generate(&env), &bob, &1i128);
+    client.send_tip(&Address::generate(&env), &alice, &1i128);
 
     assert_eq!(client.global_tip_count(), 3);
 }
@@ -197,7 +197,7 @@ fn global_tip_count_not_incremented_by_failed_tip() {
     let recipient = Address::generate(&env);
 
     // Failed tip (invalid amount) must not increment counter
-    let _ = client.try_send_tip(&recipient, &0i128);
+    let _ = client.try_send_tip(&Address::generate(&env), &recipient, &0i128);
     assert_eq!(
         client.global_tip_count(),
         0,
@@ -205,7 +205,7 @@ fn global_tip_count_not_incremented_by_failed_tip() {
     );
 
     // Successful tip increments
-    client.send_tip(&recipient, &1i128);
+    client.send_tip(&Address::generate(&env), &recipient, &1i128);
     assert_eq!(client.global_tip_count(), 1);
 }
 
@@ -258,7 +258,7 @@ fn migrate_is_idempotent() {
 
     // Accumulate some state after first migration
     let recipient = Address::generate(&env);
-    client.send_tip(&recipient, &77i128);
+    client.send_tip(&Address::generate(&env), &recipient, &77i128);
     let count_after_first = client.global_tip_count();
     assert_eq!(count_after_first, 1);
 
@@ -315,7 +315,7 @@ fn v2_migration_does_not_modify_or_remove_v1_keys() {
     let alice = Address::generate(&env);
 
     // Capture v1 state
-    client.send_tip(&alice, &500i128);
+    client.send_tip(&Address::generate(&env), &alice, &500i128);
     let pre_nonce = client.latest_settlement_nonce();
     let pre_total = client.get_tips(&alice);
     let pre_rate_cfg = client.get_rate_limit_config();

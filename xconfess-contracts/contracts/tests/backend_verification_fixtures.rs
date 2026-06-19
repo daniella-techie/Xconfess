@@ -197,6 +197,12 @@ pub const ERROR_CODE_FIXTURES: &[ErrorCodeFixture] = &[
         classification: ErrorClassification::Terminal,
         http_status: 400,
     },
+    ErrorCodeFixture {
+        error_code: 6009,
+        error_name: "TOKEN_NOT_CONFIGURED",
+        classification: ErrorClassification::Terminal,
+        http_status: 500,
+    },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════

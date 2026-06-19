@@ -43,3 +43,9 @@ For runtime compatibility, consumers should prefer:
 
 When SemVer and runtime markers disagree, runtime markers are the canonical
 compatibility contract for downstream consumers.
+
+## Contract Versions
+
+| Contract | Version | Notes |
+| --- | --- | --- |
+| `anonymous-tipping` | `1.0.0` | Implements sender-authorized XLM tip settlement through a configured token contract, cumulative `get_tip_balance`, and non-positive amount errors. Breaking change: `init` now requires the XLM token contract address and `send_tip`/`send_tip_with_proof` require `sender`. |

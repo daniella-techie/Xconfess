@@ -706,13 +706,8 @@ mod test {
             .unwrap();
         assert_eq!(client.get_expected_nonce(&author), 2);
 
-        let replay = client.try_update_status_seq(
-            &author,
-            &id,
-            &ConfessionStatus::Active,
-            &3_000,
-            &1,
-        );
+        let replay =
+            client.try_update_status_seq(&author, &id, &ConfessionStatus::Active, &3_000, &1);
         assert!(replay.is_err());
 
         let conf = client.get_confession(&id);
