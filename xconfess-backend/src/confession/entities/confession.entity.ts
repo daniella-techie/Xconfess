@@ -8,6 +8,7 @@ import {
   Index,
   ManyToOne,
   JoinColumn,
+  Unique,
 } from 'typeorm';
 import { Reaction } from '../../reaction/entities/reaction.entity';
 import { AnonymousUser } from '../../user/entities/anonymous-user.entity';
@@ -16,6 +17,7 @@ import { Comment } from '../../comment/entities/comment.entity';
 import { ConfessionTag } from './confession-tag.entity';
 
 @Entity('anonymous_confessions')
+@Unique(['stellarTxHash'])
 export class AnonymousConfession {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -112,7 +114,7 @@ export class AnonymousConfession {
   moderationDetails: Record<string, number>;
 
   // Stellar blockchain anchoring fields
-  @Column({ name: 'stellar_tx_hash', nullable: true })
+  @Column({ name: 'stellar_tx_hash', nullable: true, unique: true })
   stellarTxHash: string;
 
   @Column({ name: 'stellar_hash', nullable: true })
