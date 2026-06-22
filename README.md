@@ -195,7 +195,7 @@ This runs `ci:backend`, `ci:frontend`, and `ci:contract` in sequence — build, 
 
 xConfess participates in Stellar Wave. Check the open issues for work tagged `Stellar Wave`, then coordinate before opening a PR.
 
-GrantFox contributors should start with the [GrantFox contributor guide](docs/GRANTFOX_CONTRIBUTOR_GUIDE.md) for setup commands, campaign labels, PR linking, and validation expectations.
+GrantFox campaign contributors should start with the [GrantFox contributor guide](docs/GRANTFOX_CONTRIBUTOR_GUIDE.md). It documents setup commands, required campaign labels (`Official Campaign`, `GrantFox OSS`, `Maybe Rewarded`), validation checks, and the `Closes #ISSUE_NUMBER` PR-linking requirement.
 
 When your PR is ready for review, use the [Ready for Review comment template](docs/WAVE_5_READY_FOR_REVIEW_TEMPLATE.md) to signal maintainers.
 

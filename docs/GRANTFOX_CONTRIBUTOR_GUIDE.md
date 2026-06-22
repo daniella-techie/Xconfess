@@ -1,23 +1,24 @@
-# GrantFox contributor guide
+# GrantFox Contributor Guide
 
-This guide is for external contributors working on xConfess issues labeled
-`GrantFox OSS`, `Official Campaign`, and `Maybe Rewarded`.
+This guide is the starting point for external contributors working on xConfess
+GrantFox campaign issues. It ties together local setup, issue selection, branch
+names, pull request linking, and validation commands.
 
-## 1. Pick an issue
+## Campaign Labels
 
-Choose one open campaign issue and keep the pull request focused on that issue
-only. Read the issue body, linked docs, and acceptance criteria before changing
-files.
+GrantFox campaign issues should include these labels:
 
-Use a branch name that includes the issue number and area:
+- `Official Campaign`
+- `GrantFox OSS`
+- `Maybe Rewarded`
 
-```bash
-git checkout -b docs/1118-grantfox-guide
-git checkout -b fix/123-backend-validation
-git checkout -b feat/456-frontend-empty-state
-```
+Before starting work, choose an open issue with the campaign labels, check that
+it is not already assigned, and look for an existing pull request that mentions
+the same issue number or title.
 
-## 2. Clone and install
+## Local Setup
+
+Run these commands from a fresh clone of the repository.
 
 ```bash
 git clone https://github.com/Xconfess/Xconfess.git
@@ -25,96 +26,127 @@ cd Xconfess
 npm install
 ```
 
-## 3. Start local services
-
-The local stack uses Postgres and Redis from `compose.yaml`.
+Start the local infrastructure:
 
 ```bash
 docker compose -f compose.yaml up -d
 docker compose -f compose.yaml ps
 ```
 
-## 4. Copy environment files
-
-Never commit real `.env` or `.env.local` files. Copy the examples and use local
-test values only.
+Copy the local environment templates:
 
 ```bash
 cp xconfess-backend/.env.example xconfess-backend/.env
 cp xconfess-frontend/.env.example xconfess-frontend/.env.local
 ```
 
-For frontend-only work, you can enable the documented local auth bypass:
+The example files are intentionally safe for local development. Do not commit
+`.env` or `.env.local`, and do not paste private keys, tokens, passwords, or
+production credentials into issues, pull requests, screenshots, or logs.
+
+For a faster local UI workflow, you may add this value to
+`xconfess-frontend/.env.local`:
 
 ```bash
 NEXT_PUBLIC_DEV_BYPASS_AUTH=true
 ```
 
-Do not paste production secrets, wallet private keys, API tokens, database
-passwords, or Stellar secret keys into issues, comments, screenshots, or pull
-request descriptions.
+## Running The App
 
-## 5. Run the app
+Run the full stack from the repository root:
 
 ```bash
 npm run dev
 ```
 
-Default local URLs:
-
-| Service | URL |
-| --- | --- |
-| Frontend | http://localhost:3000 |
-| Backend API | http://localhost:5000 |
-| Backend live health | http://localhost:5000/api/health/live |
-| Backend ready health | http://localhost:5000/api/health/ready |
-
-## 6. Validate before opening a PR
-
-Run the smallest relevant command while iterating, then run the full CI command
-before requesting review when your machine can support it.
+Or run one service at a time:
 
 ```bash
+npm run dev:backend
+npm run dev:frontend
+```
+
+Default local URLs:
+
+- Frontend: `http://localhost:3000`
+- Backend API: `http://localhost:5000`
+- Live health check: `http://localhost:5000/api/health/live`
+- Readiness health check: `http://localhost:5000/api/health/ready`
+- Postgres: `localhost:55432`
+- Redis: `localhost:6379`
+
+## Branch Naming
+
+Use a small, issue-focused branch name:
+
+```bash
+git checkout -b docs/grantfox-contributor-guide
+git checkout -b fix/comment-search-proxy
+git checkout -b test/wave-demo-journey-smoke
+```
+
+Keep each branch scoped to one issue. Avoid unrelated formatting, generated
+files, dependency upgrades, or cleanup unless the issue explicitly asks for them.
+
+## Validation Commands
+
+Run the smallest relevant check while developing, then run the full CI command
+before opening the pull request when practical.
+
+```bash
+# Backend only
+npm run backend:build
+npm run backend:lint
 npm run backend:test
+
+# Frontend only
+npm run frontend:lint
 npm run frontend:test
+npm run frontend:build
+
+# Contracts only
+npm run contract:fmt:check
+npm run contract:lint
 npm run contract:test
+npm run contract:build:release
+
+# Full repository check
 npm run ci
 ```
 
-If a command cannot run locally, explain why in the PR and include the narrower
-checks you did run.
+If a full check cannot run locally because a dependency, Docker service, or
+platform tool is unavailable, document the failed command and the exact blocker
+in the pull request body.
 
-## 7. Open the pull request
+## Pull Request Checklist
 
-GrantFox campaign PRs must link the issue with `Closes #ISSUE_NUMBER` so GitHub
-and maintainers can connect the work to the bounty issue.
+Your pull request should include:
 
-Example PR body:
+- A short summary of what changed.
+- The validation commands you ran and their results.
+- Screenshots for visible UI changes.
+- Any known limitations or follow-up work.
+- A closing keyword that links the GrantFox issue.
 
-```markdown
+Use this format in the pull request body so GrantFox and GitHub can connect the
+work to the issue:
+
+```md
 Closes #1118
-
-## Summary
-- added GrantFox contributor onboarding guide
-- linked the guide from the root README
-
-## Validation
-- reviewed commands against README and package scripts
-- `git diff --check`
-
-## Secrets
-- no production secrets or private keys included
 ```
 
-Before opening the PR, review:
+Replace `1118` with the actual issue number you are solving. Do not omit the
+closing keyword on GrantFox campaign PRs.
 
-- [Small PR policy](./SMALL_PR_POLICY.md)
-- [Ready for Review template](./WAVE_5_READY_FOR_REVIEW_TEMPLATE.md)
-- [Log redaction guide](./LOG_ATTACHING_GUIDE.md)
+## Review Handoff
 
-## 8. Reward and platform notes
+When the PR is ready, use the ready-for-review template:
 
-GrantFox eligibility is decided by the campaign maintainers or GrantFox flow.
-This repository does not document KYC, payout wallets, tax forms, or private
-payment details. Follow GrantFox's official instructions for those steps and
-never post sensitive payout information publicly.
+- [Wave 5 ready-for-review template](WAVE_5_READY_FOR_REVIEW_TEMPLATE.md)
+
+If your PR includes logs or screenshots, follow the redaction rules:
+
+- [Attaching logs to issues and PRs](LOG_ATTACHING_GUIDE.md)
+
+Never include production secrets, private keys, real user data, or KYC/payment
+information in repository artifacts.
