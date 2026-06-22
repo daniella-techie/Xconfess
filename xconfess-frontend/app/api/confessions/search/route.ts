@@ -36,10 +36,12 @@ export async function GET(request: Request) {
   const backendParams = new URLSearchParams();
   backendParams.set("page", String(page));
   backendParams.set("limit", String(limit));
-  backendParams.set("sort", sort);
+  // Map frontend 'sort' to backend 'sortBy' enum
+  if (sort && sort !== "newest") backendParams.set("sortBy", sort);
   if (q) backendParams.set("q", q);
-  if (dateFrom) backendParams.set("dateFrom", dateFrom);
-  if (dateTo) backendParams.set("dateTo", dateTo);
+  // Map frontend 'dateFrom'/'dateTo' to backend 'startDate'/'endDate'
+  if (dateFrom) backendParams.set("startDate", dateFrom);
+  if (dateTo) backendParams.set("endDate", dateTo);
   if (minReactions != null && minReactions !== "")
     backendParams.set("minReactions", minReactions);
   if (gender) backendParams.set("gender", gender);

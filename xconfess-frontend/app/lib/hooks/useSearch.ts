@@ -237,11 +237,11 @@ export function useSearch({
     const params = new URLSearchParams();
     params.set("page", String(page));
     params.set("limit", "10");
-    params.set("sort", filters.sort);
+    if (filters.sort && filters.sort !== "newest") params.set("sortBy", filters.sort);
 
     if (debouncedQuery.trim()) params.set("q", debouncedQuery.trim());
-    if (filters.dateFrom) params.set("dateFrom", filters.dateFrom);
-    if (filters.dateTo) params.set("dateTo", filters.dateTo);
+    if (filters.dateFrom) params.set("startDate", filters.dateFrom);
+    if (filters.dateTo) params.set("endDate", filters.dateTo);
     if (filters.minReactions != null && filters.minReactions > 0) {
       params.set("minReactions", String(filters.minReactions));
     }
