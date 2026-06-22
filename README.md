@@ -195,6 +195,8 @@ This runs `ci:backend`, `ci:frontend`, and `ci:contract` in sequence — build, 
 
 xConfess participates in Stellar Wave. Check the open issues for work tagged `Stellar Wave`, then coordinate before opening a PR.
 
+GrantFox contributors should start with the [GrantFox contributor guide](docs/GRANTFOX_CONTRIBUTOR_GUIDE.md) for setup commands, campaign labels, PR linking, and validation expectations.
+
 When your PR is ready for review, use the [Ready for Review comment template](docs/WAVE_5_READY_FOR_REVIEW_TEMPLATE.md) to signal maintainers.
 
 When reporting bugs, see [Attaching Logs to Issues and PRs](docs/LOG_ATTACHING_GUIDE.md) for redaction guidelines.
@@ -207,3 +209,23 @@ xConfess participates in the GrantFox Official Campaign. All related pull reques
 - `xconfess-backend/README.md`
 - `xconfess-frontend/README.md`
 - `xconfess-contracts/README.md`
+# README.md — contributing section patch
+
+Find the **Contributing** section in `README.md` and insert the two lines marked `+` below.
+The surrounding lines are shown for context; do not duplicate them.
+
+```diff
+ ## Contributing
+
+ xConfess participates in Stellar Wave. Check the open issues for work tagged
+ Stellar Wave, then coordinate before opening a PR.
++
++Before opening a PR, read the [small PR policy](docs/SMALL_PR_POLICY.md).
++Keep each PR focused on one issue, include tests for code changes, and
++screenshots for UI changes.
+
+ When your PR is ready for review, use the Ready for Review comment template
+ to signal maintainers.
+```
+
+That is the only change to `README.md`.
