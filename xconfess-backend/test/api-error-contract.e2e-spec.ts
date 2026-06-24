@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
-import * as request from 'supertest';
+import request from 'supertest';
 import { AppModule } from './../src/app.module';
 import { HttpExceptionFilter } from './../src/common/filters/http-exception.filter';
 import { ThrottlerExceptionFilter } from './../src/common/filters/throttler-exception.filter';
@@ -36,7 +36,7 @@ describe('API Error Contract (e2e)', () => {
   });
 
   const expectErrorEnvelope = (
-    response: request.Response,
+    response: any,
     expectedStatus: number,
   ) => {
     expect(response.status).toBe(expectedStatus);
@@ -62,6 +62,57 @@ describe('API Error Contract (e2e)', () => {
 
       expectErrorEnvelope(response, 400);
       expect(response.body.code).toBe('BAD_REQUEST');
+    });
+
+    it('should return field-level validation details for empty search query', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/confessions/search')
+        .query({ q: '', page: 1, limit: 10 });
+
+      expectErrorEnvelope(response, 400);
+      expect(response.body.code).toBe('BAD_REQUEST');
+      expect(response.body.message).toBe(
+        'Validation failed for search parameters',
+      );
+      expect(response.body.details).toBeDefined();
+      expect(response.body.details.fields).toBeDefined();
+      expect(response.body.details.fields.q).toEqual(
+        expect.arrayContaining([expect.stringContaining('q should not be empty')]),
+      );
+    });
+
+    it('should return field-level validation details for unsupported query charset', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/confessions/search')
+        .query({ q: 'work\u0007stress', page: 1, limit: 10 });
+
+      expectErrorEnvelope(response, 400);
+      expect(response.body.code).toBe('BAD_REQUEST');
+      expect(response.body.message).toBe(
+        'Validation failed for search parameters',
+      );
+      expect(response.body.details.fields.q).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining('unsupported characters'),
+        ]),
+      );
+    });
+
+    it('should reject over-max pagination limit with field-level message', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/confessions/search')
+        .query({ q: 'stress', page: 1, limit: 999 });
+
+      expectErrorEnvelope(response, 400);
+      expect(response.body.code).toBe('BAD_REQUEST');
+      expect(response.body.message).toBe(
+        'Validation failed for search parameters',
+      );
+      expect(response.body.details.fields.limit).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining('must not be greater than 50'),
+        ]),
+      );
     });
   });
 

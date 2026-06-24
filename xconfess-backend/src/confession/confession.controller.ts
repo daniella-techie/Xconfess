@@ -3,6 +3,8 @@ import {
   Post,
   UsePipes,
   ValidationPipe,
+  ValidationError,
+  BadRequestException,
   Body,
   Get,
   Query,
@@ -31,6 +33,39 @@ import { SearchConfessionDto } from './dto/search-confession.dto';
 import { UpdateConfessionDto } from './dto/update-confession.dto';
 import { OptionalJwtAuthGuard } from '../auth/optional-jwt-auth.guard';
 import { SearchDiscoveryService } from '../search-discovery/search-discovery.service';
+
+const flattenValidationErrors = (
+  errors: ValidationError[],
+  parentPath = '',
+): Record<string, string[]> => {
+  const fieldErrors: Record<string, string[]> = {};
+
+  for (const error of errors) {
+    const path = parentPath ? `${parentPath}.${error.property}` : error.property;
+
+    if (error.constraints) {
+      fieldErrors[path] = Object.values(error.constraints);
+    }
+
+    if (error.children && error.children.length > 0) {
+      Object.assign(fieldErrors, flattenValidationErrors(error.children, path));
+    }
+  }
+
+  return fieldErrors;
+};
+
+const searchValidationPipe = new ValidationPipe({
+  transform: true,
+  whitelist: true,
+  exceptionFactory: (validationErrors: ValidationError[]) => {
+    const fields = flattenValidationErrors(validationErrors);
+    return new BadRequestException({
+      message: 'Validation failed for search parameters',
+      details: { fields },
+    });
+  },
+});
 
 @ApiTags('Confessions')
 @Controller('confessions')
@@ -99,7 +134,7 @@ export class ConfessionController {
   @Get('search')
   @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'Search confessions (hybrid)' })
-  @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
+  @UsePipes(searchValidationPipe)
   async search(@Query() dto: SearchConfessionDto, @Req() req: any) {
     const result = await this.service.search(dto);
     if (req.user && req.user.id) {
@@ -111,7 +146,7 @@ export class ConfessionController {
   @Get('search/fulltext')
   @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'Full-text search confessions' })
-  @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
+  @UsePipes(searchValidationPipe)
   async fullTextSearch(@Query() dto: SearchConfessionDto, @Req() req: any) {
     const result = await this.service.fullTextSearch(dto);
     if (req.user && req.user.id) {

@@ -3,6 +3,7 @@ import {
   IsString,
   IsNotEmpty,
   MinLength,
+  MaxLength,
   IsOptional,
   IsInt,
   Min,
@@ -13,6 +14,7 @@ import {
   IsEnum,
   IsArray,
   ValidateIf,
+  Matches,
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -24,27 +26,46 @@ export enum SortBy {
   RELEVANCE = 'relevance',
 }
 
+const SEARCH_QUERY_MAX_LENGTH = 120;
+const SEARCH_PAGE_MAX = 1000;
+// Allow Unicode letters/numbers + common separators/punctuation used in search.
+const SEARCH_QUERY_ALLOWED_CHARS =
+  /^[\p{L}\p{N}\p{Zs}.,!?'"@#$%&*()_\-:+/[\]{}]+$/u;
+
 export class SearchConfessionDto {
   @ApiProperty({
     description: 'Search query string',
     example: 'work stress',
     minLength: 1,
+    maxLength: SEARCH_QUERY_MAX_LENGTH,
   })
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
   @IsString()
   @IsNotEmpty()
   @MinLength(1)
+  @MaxLength(SEARCH_QUERY_MAX_LENGTH, {
+    message: `q must not exceed ${SEARCH_QUERY_MAX_LENGTH} characters`,
+  })
+  @Matches(SEARCH_QUERY_ALLOWED_CHARS, {
+    message:
+      'q contains unsupported characters; use letters, numbers, spaces, or common punctuation',
+  })
   q: string;
 
   @ApiPropertyOptional({
     description: 'Page number for pagination',
     example: 1,
     minimum: 1,
+    maximum: SEARCH_PAGE_MAX,
     default: 1,
   })
   @IsOptional()
   @Transform(({ value }) => parseInt(value))
   @IsInt()
   @Min(1)
+  @Max(SEARCH_PAGE_MAX)
   page?: number = 1;
 
   @ApiPropertyOptional({
