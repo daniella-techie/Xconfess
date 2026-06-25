@@ -42,6 +42,7 @@ env:
   NEXT_TELEMETRY_DISABLED: '1'
   RUST_BACKTRACE: 1
   CI: true
+  SKIP_E2E: ${{ vars.SKIP_E2E || 'false' }}
 
 jobs:
   backend-gate:
@@ -124,6 +125,11 @@ jobs:
 
       - name: Test frontend smoke tests
         run: npm run test:smoke --workspace=xconfess-frontend 2>/dev/null || echo "No smoke tests"
+        continue-on-error: true
+
+      - name: Run E2E engagement journey tests
+        if: ${{ env.SKIP_E2E != 'true' }}
+        run: npx playwright install chromium && npm run test:e2e --workspace=xconfess-frontend
         continue-on-error: true
 
       - name: Upload frontend test results
@@ -289,4 +295,9 @@ jobs:
 
       - name: Run E2E tests (smoke subset)
         run: npm run test:e2e --workspace=xconfess-backend 2>/dev/null || echo "E2E tests not available"
+        continue-on-error: true
+
+      - name: Run frontend E2E tests
+        if: ${{ env.SKIP_E2E != 'true' }}
+        run: npx playwright install chromium && npm run test:e2e --workspace=xconfess-frontend
         continue-on-error: true

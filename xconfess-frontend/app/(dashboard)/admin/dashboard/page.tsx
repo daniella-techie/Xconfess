@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { adminApi, Analytics } from '@/app/lib/api/admin';
 import { queryKeys } from '@/app/lib/api/queryKeys';
 import AnalyticsDashboard from '@/app/components/admin/AnalyticsDashboard';
+import ReportHealthCard from '@/app/components/admin/ReportHealthCard';
 import { AnalyticsLoadingSkeleton } from '@/app/components/analytics/LoadingState';
 
 export default function AdminDashboardPage() {
@@ -35,6 +36,7 @@ export default function AdminDashboardPage() {
           Overview of platform health and user activity
         </p>
       </div>
+      <ReportHealthCard />
       <AnalyticsDashboard analytics={analytics} />
     </div>
   );

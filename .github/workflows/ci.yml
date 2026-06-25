@@ -18,6 +18,7 @@ env:
   NEXT_TELEMETRY_DISABLED: '1'
   RUST_BACKTRACE: 1
   CI: true
+  SKIP_E2E: ${{ vars.SKIP_E2E || 'false' }}
 
 jobs:
   changes:
@@ -97,6 +98,11 @@ jobs:
 
       - name: Test frontend
         run: npm run test --workspace=xconfess-frontend
+
+      - name: Run E2E tests
+        if: ${{ env.SKIP_E2E != 'true' }}
+        run: npx playwright install chromium && npm run test:e2e --workspace=xconfess-frontend
+        continue-on-error: true
 
   contracts:
     name: Contracts / fmt clippy and test

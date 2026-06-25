@@ -207,6 +207,23 @@ export class AdminController {
     };
   }
 
+  @Get('reports/stats')
+  @ApiOperation({ summary: 'Get report queue health stats' })
+  @ApiResponse({
+    status: 200,
+    description: 'Report queue metrics.',
+    schema: {
+      example: {
+        pendingCount: 5,
+        oldestUnresolvedAge: 86400,
+        resolvedTodayCount: 3,
+      },
+    },
+  })
+  async getReportStats() {
+    return this.adminService.getReportStats();
+  }
+
   @Get('reports/:id')
   @ApiOperation({ summary: 'Get a single report by ID' })
   @ApiParam({ name: 'id', description: 'Report UUID' })

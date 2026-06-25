@@ -266,6 +266,78 @@ The current workspace crates are:
 
 ---
 
+## Testnet Wallet Setup
+
+Before deploying contracts or running on-chain operations locally, you need a funded testnet keypair.
+
+### Step 1: Generate a testnet keypair
+
+```bash
+# Generate a new keypair named "deployer" for the testnet network
+stellar keys generate --global deployer --network testnet
+
+# Display the public key (shareable)
+stellar keys address deployer
+
+# Display the secret key (NEVER share or commit this)
+stellar keys show deployer
+```
+
+### Step 2: Fund the account via Friendbot
+
+```bash
+# Fund the account on testnet
+curl "https://friendbot.stellar.org?addr=$(stellar keys address deployer)"
+```
+
+Wait 5–10 seconds for the transaction to be confirmed on the network, then verify:
+
+```bash
+# Check account exists on Horizon
+curl "https://horizon-testnet.stellar.org/accounts/$(stellar keys address deployer)"
+```
+
+### Step 3: Add the secret to your backend .env
+
+Copy the secret key and set it as `STELLAR_SERVER_SECRET` in `xconfess-backend/.env`:
+
+```env
+STELLAR_SERVER_SECRET=SXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+```
+
+### Important notes
+
+- **Testnet funds are free and reset periodically** (typically every 3 months). Re-fund your account if transactions fail with insufficient balance.
+- **Never commit secrets.** The `.env` file is gitignored. Always use `.env.example` templates for committed configuration.
+- **Use the `stellar keys` command** to manage keys rather than raw secret strings. This avoids accidentally leaking secrets in shell history.
+- **Testnet is for development only.** For production or mainnet testing, use a hardware wallet or a dedicated signing service.
+
+### Troubleshooting: "account not found" errors from Horizon
+
+**Problem:** `POST /transactions` returns HTTP 404 or `transaction failed — source account not found`.
+
+**Cause:** The account is either not yet funded, or Horizon has not indexed it yet.
+
+**Solution:**
+
+1. Verify the account exists on the network:
+   ```bash
+   curl "https://horizon-testnet.stellar.org/accounts/$(stellar keys address deployer)"
+   ```
+2. If the account is missing, re-fund it via Friendbot:
+   ```bash
+   curl "https://friendbot.stellar.org?addr=$(stellar keys address deployer)"
+   ```
+3. Wait 10–15 seconds and try again. Horizon can be a few ledgers behind Friendbot.
+4. If Horizon returns a 404 with `"type": "https://stellar.org/horizon-errors/not_found"`, the account genuinely does not exist on the network. Ensure you used the correct network (`testnet`) when generating and funding the key.
+
+For deeper reading, see the official Stellar docs:
+- [Stellar Keys & Accounts](https://developers.stellar.org/docs/learn/fundamentals/stellar-data-structures/accounts)
+- [Friendbot](https://developers.stellar.org/docs/learn/fundamentals/networks#friendbot)
+- [Horizon API Reference](https://developers.stellar.org/api/horizon/)
+
+---
+
 ## Deployment Guide
 
 ### Deploy to Stellar Testnet
