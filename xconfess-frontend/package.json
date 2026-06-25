@@ -65,7 +65,7 @@
     "@types/recharts": "^1.8.29",
     "axe-core": "^4.10.3",
     "eslint": "^9",
-    "eslint-config-next": "^16.2.1",
+    "eslint-config-next": "16.2.9",
     "jest": "^30.3.0",
     "jest-axe": "^9.0.0",
     "jest-environment-jsdom": "^30.3.0",

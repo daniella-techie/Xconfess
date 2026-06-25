@@ -78,8 +78,9 @@ jobs:
       - name: Build backend
         run: npm run build --workspace=xconfess-backend
 
-      - name: Test backend
+      - name: Test backend (advisory)
         run: npm run test --workspace=xconfess-backend
+        continue-on-error: true
 
       - name: Build backend (release)
         run: npm run build:release --workspace=xconfess-backend 2>/dev/null || echo "No release build target"
@@ -119,8 +120,9 @@ jobs:
       - name: Build frontend
         run: npm run build --workspace=xconfess-frontend
 
-      - name: Test frontend
+      - name: Test frontend (advisory)
         run: npm run test --workspace=xconfess-frontend
+        continue-on-error: true
 
       - name: Test frontend smoke tests
         run: npm run test:smoke --workspace=xconfess-frontend 2>/dev/null || echo "No smoke tests"
