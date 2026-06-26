@@ -6,6 +6,7 @@ import {
   Logger,
   Param,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -39,6 +40,18 @@ export class StellarController {
     private configService: ConfigService,
     private auditLogService: AuditLogService,
   ) {}
+
+  @Get('anchors')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Get paginated anchored confessions for the current user' })
+  @ApiResponse({ status: 200, description: 'Paginated list of anchored confessions' })
+  async getUserAnchors(
+    @Req() req: AuthenticatedRequest,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.stellarService.getUserAnchors(req.user.id, page || 1, limit || 10);
+  }
 
   @Get('config')
   @ApiOperation({

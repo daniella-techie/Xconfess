@@ -101,6 +101,12 @@ export interface AdminObservabilityResponse {
   generatedAt: string;
 }
 
+export interface ReportStats {
+  pendingCount: number;
+  oldestUnresolvedAge: number | null;
+  resolvedTodayCount: number;
+}
+
 export const adminApi = {
   // Reports
   getReports: async (params?: {
@@ -140,6 +146,12 @@ export const adminApi = {
       notes,
     });
     return response.data;
+  },
+
+  // Report stats
+  getReportStats: async () => {
+    const response = await apiClient.get('/api/admin/reports/stats');
+    return response.data as ReportStats;
   },
 
   // Confessions

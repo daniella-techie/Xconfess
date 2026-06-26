@@ -14,7 +14,7 @@ import { ConfigService } from '@nestjs/config';
 import { AppLogger } from 'src/logger/logger.service';
 import { EncryptionService } from 'src/encryption/encryption.service';
 import { StellarService } from '../stellar/stellar.service';
-import { CacheService } from '../cache/cache.service';
+import { CacheService, CACHE_TTL } from '../cache/cache.service';
 import { TagService } from './tag.service';
 import { encryptConfession } from '../utils/confession-encryption';
 
@@ -23,6 +23,7 @@ describe('ConfessionService', () => {
   let repo: jest.Mocked<Repository<AnonymousConfession>>;
   let qb: Partial<SelectQueryBuilder<AnonymousConfession>> & any;
   let anonUserService: any;
+  let cacheServiceMock: any;
 
   beforeEach(async () => {
     qb = {
@@ -105,6 +106,7 @@ describe('ConfessionService', () => {
 
     service = module.get(ConfessionService);
     anonUserService = module.get(AnonymousUserService);
+    cacheServiceMock = module.get(CacheService);
   });
 
   it('remove() soft‑deletes existing', async () => {
@@ -158,6 +160,47 @@ describe('ConfessionService', () => {
       console.error('ERROR', e);
       throw e;
     }
+  });
+
+  describe('Cache TTL values (#1247)', () => {
+    it('CACHE_TTL constants are correctly defined', () => {
+      expect(CACHE_TTL.CONFESSION_SINGLE).toBe(1800);
+      expect(CACHE_TTL.CONFESSION_LIST).toBe(300);
+      expect(CACHE_TTL.TRENDING).toBe(120);
+    });
+
+    it('uses CONFESSION_SINGLE TTL (1800s) for individual confession cache', async () => {
+      repo.findOne.mockResolvedValue({
+        id: 'cached-single',
+        message: encryptConfession('test', '12345678901234567890123456789012'),
+        created_at: new Date(),
+        isDeleted: false,
+        isHidden: false,
+      });
+      const mockReq = { ip: '127.0.0.1', headers: {} } as any;
+      await service.getConfessionByIdWithViewCount('cached-single', mockReq);
+      expect(cacheServiceMock.set).toHaveBeenCalledWith(
+        'confession:cached-single',
+        expect.anything(),
+        CACHE_TTL.CONFESSION_SINGLE,
+      );
+    });
+
+    it('uses CONFESSION_LIST TTL (300s) for confession list cache', async () => {
+      const req = { page: 1, limit: 10, sort: SortOrder.NEWEST };
+      qb.getMany.mockResolvedValue([]);
+      await service.getConfessions(req);
+      expect(cacheServiceMock.set).toHaveBeenCalledWith(
+        expect.stringContaining('confessions:'),
+        expect.anything(),
+        CACHE_TTL.CONFESSION_LIST,
+      );
+    });
+
+    it('invalidateConfessionCache clears list keys but not single keys', async () => {
+      (service as any).invalidateConfessionCache();
+      expect(cacheServiceMock.delPattern).toHaveBeenCalledWith('confessions:');
+    });
   });
 });
 

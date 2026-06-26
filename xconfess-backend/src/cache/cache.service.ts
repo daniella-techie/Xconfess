@@ -8,6 +8,14 @@ import {
   AnalyticsEntityType,
 } from './cache-namespace';
 
+export const CACHE_TTL = {
+  CONFESSION_SINGLE: 1800,
+  CONFESSION_LIST: 300,
+  TRENDING: 120,
+  ANALYTICS: 900,
+  VIEW_DEDUP: 3600,
+} as const;
+
 @Injectable()
 export class CacheService {
   private readonly logger = new Logger(CacheService.name);

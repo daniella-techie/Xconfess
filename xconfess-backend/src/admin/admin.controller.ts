@@ -87,6 +87,22 @@ export class UpdateTemplateDto {
   isActive?: boolean;
 }
 
+export class ExportAuditDto {
+  @IsNotEmpty()
+  @IsString()
+  label: string;
+
+  @IsOptional()
+  rowCount?: number;
+
+  @IsOptional()
+  filters?: Record<string, unknown>;
+
+  @IsOptional()
+  @IsString()
+  requestId?: string;
+}
+
 type AuthedRequest = Request & { user?: RequestUser };
 
 const auditActionTypeValues = new Set<string>(
@@ -189,6 +205,23 @@ export class AdminController {
       limit: parseInt(limit || '50', 10),
       offset: parseInt(offset || '0', 10),
     };
+  }
+
+  @Get('reports/stats')
+  @ApiOperation({ summary: 'Get report queue health stats' })
+  @ApiResponse({
+    status: 200,
+    description: 'Report queue metrics.',
+    schema: {
+      example: {
+        pendingCount: 5,
+        oldestUnresolvedAge: 86400,
+        resolvedTodayCount: 3,
+      },
+    },
+  })
+  async getReportStats() {
+    return this.adminService.getReportStats();
   }
 
   @Get('reports/:id')
@@ -657,5 +690,26 @@ export class AdminController {
     });
 
     return result;
+  }
+
+  @Post('exports/audit')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({ summary: 'Record admin CSV export action for audit' })
+  async auditExport(
+    @Body() dto: ExportAuditDto,
+    @GetUser('id') adminId: number,
+    @Req() req: AuthedRequest,
+  ) {
+    // Non-blocking: fire-and-forget audit logging
+    void this.auditLogService
+      .logAdminCsvExport(String(adminId), {
+        label: dto.label,
+        requestId: dto.requestId || (req.headers['x-request-id'] as string | undefined) || null,
+        rowCount: dto.rowCount ?? null,
+        filters: dto.filters || null,
+      }, { requestId: (req.headers['x-request-id'] as string) || undefined })
+      .catch(() => undefined);
+
+    return { accepted: true };
   }
 }

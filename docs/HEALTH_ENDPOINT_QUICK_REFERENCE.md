@@ -48,7 +48,9 @@ The readiness probe (`/api/health/ready`) checks:
 
 1. **Database** — Postgres connection via TypeORM ping
 2. **Redis** — Redis connection health. Conditioned on `ENABLE_BACKGROUND_JOBS=true`; returns `mode: disabled` when jobs are off.
-3. **Queues** — BullMQ queue worker availability. Conditioned on `ENABLE_BACKGROUND_JOBS=true`; returns `mode: disabled` when jobs are off.
+3. **Queues** — BullMQ queue worker availability and lightweight connection latency. Conditioned on `ENABLE_BACKGROUND_JOBS=true`; returns `mode: disabled` when jobs are off.
+   - Measures lightweight latency using a Redis ping on each queue client.
+   - Configurable latency threshold via `REDIS_QUEUE_LATENCY_THRESHOLD_MS` (defaults to `250` ms). Latencies exceeding this threshold will mark the queue as `'degraded'` and fail the readiness check (returning 503).
 4. **Schema** — Confession table exists and matches expected schema
 
 ## Response examples
@@ -57,33 +59,55 @@ The readiness probe (`/api/health/ready`) checks:
 
 ```json
 {
-  "status": "ok"
+  "status": "ok",
+  "info": {
+    "database": { "status": "up" },
+    "redis": { "status": "up" },
+    "queues": {
+      "status": "up",
+      "notifications": {
+        "status": "up",
+        "workers": 1,
+        "counts": { "active": 0, "waiting": 0, "failed": 0, "delayed": 0 },
+        "latencyMs": 12
+      }
+    },
+    "schema": { "status": "up" }
+  }
 }
 ```
 
-### Unhealthy (503)
+### Unhealthy (503) - Unavailable or Degraded Queue
 
 ```json
 {
   "status": "error",
   "info": {
-    "database": { "status": "up" }
+    "database": { "status": "up" },
+    "redis": { "status": "up" }
   },
   "error": {
-    "redis": {
+    "queues": {
       "status": "down",
-      "host": "localhost",
-      "port": 6379,
-      "error": "connect ECONNREFUSED 127.0.0.1:6379"
+      "notifications": {
+        "status": "degraded",
+        "workers": 1,
+        "counts": { "active": 0, "waiting": 0, "failed": 0, "delayed": 0 },
+        "latencyMs": 350
+      }
     }
   },
   "details": {
     "database": { "status": "up" },
-    "redis": {
+    "redis": { "status": "up" },
+    "queues": {
       "status": "down",
-      "host": "localhost",
-      "port": 6379,
-      "error": "connect ECONNREFUSED 127.0.0.1:6379"
+      "notifications": {
+        "status": "degraded",
+        "workers": 1,
+        "counts": { "active": 0, "waiting": 0, "failed": 0, "delayed": 0 },
+        "latencyMs": 350
+      }
     }
   }
 }

@@ -16,12 +16,16 @@ type QueueName = (typeof QUEUE_NAMES)[number];
 function makeMockQueue(
   workers = 1,
   counts = { active: 0, waiting: 0, failed: 0, delayed: 0 },
+  pingMock = jest.fn().mockResolvedValue('PONG'),
 ) {
   return {
     getWorkers: jest
       .fn()
       .mockResolvedValue(new Array(workers).fill({ id: 'w1' })),
     getJobCounts: jest.fn().mockResolvedValue(counts),
+    client: Promise.resolve({
+      ping: pingMock,
+    }),
   };
 }
 
@@ -30,6 +34,7 @@ type MockQueue = ReturnType<typeof makeMockQueue>;
 function buildModule(
   queueOverrides: Partial<Record<QueueName, MockQueue>>,
   backgroundJobsValue?: string,
+  latencyThresholdValue?: number,
 ) {
   const queues = Object.fromEntries(
     QUEUE_NAMES.map((name) => [name, queueOverrides[name] ?? makeMockQueue()]),
@@ -41,11 +46,15 @@ function buildModule(
       {
         provide: ConfigService,
         useValue: {
-          get: jest.fn((key: string) =>
-            key === 'ENABLE_BACKGROUND_JOBS'
-              ? backgroundJobsValue
-              : undefined,
-          ),
+          get: jest.fn((key: string) => {
+            if (key === 'ENABLE_BACKGROUND_JOBS') {
+              return backgroundJobsValue;
+            }
+            if (key === 'REDIS_QUEUE_LATENCY_THRESHOLD_MS') {
+              return latencyThresholdValue;
+            }
+            return undefined;
+          }),
         },
       },
       ...QUEUE_NAMES.map((name) => ({
@@ -253,6 +262,108 @@ describe('QueueHealthIndicator', () => {
         expect(result.queues['notifications']).toMatchObject({
           counts: { active: 3, waiting: 10, failed: 1, delayed: 0 },
         });
+      });
+    });
+
+    describe('Redis queue latency and availability checks', () => {
+      afterEach(() => {
+        jest.restoreAllMocks();
+      });
+
+      it('includes latencyMs in healthy results', async () => {
+        let currentTime = 1000;
+        jest.spyOn(Date, 'now').mockImplementation(() => currentTime);
+
+        const pingMock = jest.fn().mockImplementation(async () => {
+          currentTime += 10; // 10ms latency
+        });
+        const queues = Object.fromEntries(
+          QUEUE_NAMES.map((name) => [name, makeMockQueue(1, undefined, pingMock)]),
+        );
+
+        const module: TestingModule = await buildModule(queues, 'true', 250);
+        indicator = module.get(QueueHealthIndicator);
+
+        const result = await indicator.isHealthy('queues');
+        expect(result.queues.status).toBe('up');
+        expect(result.queues['notifications']).toMatchObject({
+          status: 'up',
+          latencyMs: 10,
+        });
+      });
+
+      it('marks queue degraded and throws HealthCheckError when latency exceeds threshold', async () => {
+        let currentTime = 1000;
+        jest.spyOn(Date, 'now').mockImplementation(() => currentTime);
+
+        const slowPing = jest.fn().mockImplementation(async () => {
+          currentTime += 300; // 300ms latency (threshold is 250)
+        });
+        const fastPing = jest.fn().mockImplementation(async () => {
+          currentTime += 10; // 10ms latency
+        });
+
+        const queues = Object.fromEntries(
+          QUEUE_NAMES.map((name) => [
+            name,
+            makeMockQueue(
+              1,
+              undefined,
+              name === 'notifications' ? slowPing : fastPing,
+            ),
+          ]),
+        );
+
+        const module: TestingModule = await buildModule(queues, 'true', 250);
+        indicator = module.get(QueueHealthIndicator);
+
+        expect.assertions(3);
+        try {
+          await indicator.isHealthy('queues');
+        } catch (err) {
+          expect(err).toBeInstanceOf(HealthCheckError);
+          const causes = (err as HealthCheckError).causes as Record<
+            string,
+            Record<string, any>
+          >;
+          expect(causes['queues']['notifications']).toMatchObject({
+            status: 'degraded',
+            latencyMs: 300,
+          });
+          expect(causes['queues']['notifications-dlq']).toMatchObject({
+            status: 'up',
+            latencyMs: 10,
+          });
+        }
+      });
+
+      it('marks queue down and throws HealthCheckError when Redis ping fails', async () => {
+        const pingMock = jest.fn().mockRejectedValue(new Error('Connection timeout'));
+        const brokenQueue = makeMockQueue(1, undefined, pingMock);
+
+        const module: TestingModule = await buildModule(
+          {
+            notifications: brokenQueue,
+          },
+          'true',
+          250,
+        );
+        indicator = module.get(QueueHealthIndicator);
+
+        expect.assertions(2);
+        try {
+          await indicator.isHealthy('queues');
+        } catch (err) {
+          expect(err).toBeInstanceOf(HealthCheckError);
+          const causes = (err as HealthCheckError).causes as Record<
+            string,
+            Record<string, any>
+          >;
+          expect(causes['queues']['notifications']).toMatchObject({
+            status: 'down',
+            error: 'Connection timeout',
+          });
+        }
       });
     });
   });

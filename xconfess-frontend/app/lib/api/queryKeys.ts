@@ -46,6 +46,8 @@ export const queryKeys = {
       // ["admin", "reports", "list", { statusFilter, typeFilter, … }]
       list: (filters: Record<string, unknown>) =>
         ["admin", "reports", "list", filters] as const,
+      // ["admin", "reports", "stats"]
+      stats: () => ["admin", "reports", "stats"] as const,
     },
 
     users: {

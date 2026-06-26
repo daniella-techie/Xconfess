@@ -35,3 +35,30 @@ export async function fetchStellarDiagnostics(): Promise<StellarDiagnosticsRespo
   );
   return response.data;
 }
+
+export interface AnchorRecord {
+  confessionId: string;
+  stellarTxHash: string;
+  stellarHash: string;
+  anchoredAt: string;
+  contractId: string;
+  stellarExplorerUrl: string;
+  message: string;
+}
+
+export interface AnchorsResponse {
+  data: AnchorRecord[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
+export async function fetchUserAnchors(page = 1, limit = 10): Promise<AnchorsResponse> {
+  const response = await apiClient.get<AnchorsResponse>('/stellar/anchors', {
+    params: { page, limit },
+  });
+  return response.data;
+}

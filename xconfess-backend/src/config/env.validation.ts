@@ -134,4 +134,7 @@ export const envValidationSchema = Joi.object({
   DLQ_AUTO_REPLAY_INTERVAL_MS: Joi.number().default(1800000), // 30 min
   DLQ_AUTO_REPLAY_LOOKBACK_MINUTES: Joi.number().default(15),
   DLQ_AUTO_REPLAY_MAX_JOBS_PER_RUN: Joi.number().default(50),
+
+  // ── Redis queue health ──────────────────────────────────────────────
+  REDIS_QUEUE_LATENCY_THRESHOLD_MS: Joi.number().default(250),
 }).options({ allowUnknown: true, abortEarly: false });

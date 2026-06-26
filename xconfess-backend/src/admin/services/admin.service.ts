@@ -690,6 +690,38 @@ export class AdminService {
     };
   }
 
+  async getReportStats(): Promise<{
+    pendingCount: number;
+    oldestUnresolvedAge: number | null;
+    resolvedTodayCount: number;
+  }> {
+    const pendingCount = await this.reportRepository.count({
+      where: { status: ReportStatus.PENDING },
+    });
+
+    const oldestPending = await this.reportRepository.findOne({
+      where: { status: ReportStatus.PENDING },
+      order: { createdAt: 'ASC' },
+    });
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const resolvedToday = await this.reportRepository
+      .createQueryBuilder('report')
+      .where('report.status = :status', { status: ReportStatus.RESOLVED })
+      .andWhere('report.resolvedAt >= :todayStart', { todayStart })
+      .getCount();
+
+    return {
+      pendingCount,
+      oldestUnresolvedAge: oldestPending
+        ? Math.floor((Date.now() - oldestPending.createdAt.getTime()) / 1000)
+        : null,
+      resolvedTodayCount: resolvedToday,
+    };
+  }
+
   // Analytics
   async getAnalytics(startDate?: Date, endDate?: Date) {
     const start = startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);

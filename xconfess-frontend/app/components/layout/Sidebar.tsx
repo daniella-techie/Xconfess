@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
-import { X, LogOut, User, MessageSquare, Home, Search, BarChart3 } from "lucide-react";
+import { X, LogOut, User, MessageSquare, Home, Search, BarChart3, Anchor } from "lucide-react";
 import { useAuth } from "../../lib/hooks/useAuth";
 import { useFocusTrap } from "@/app/lib/hooks/useFocusTrap";
 
@@ -107,6 +107,16 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 >
                   <User size={20} />
                   <span>Profile</span>
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/anchors"
+                  className="flex items-center gap-3 px-4 py-4 text-gray-700 dark:text-slate-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 hover:text-purple-600 dark:hover:text-purple-400 rounded-lg transition-colors min-h-[44px]"
+                  onClick={onClose}
+                >
+                  <Anchor size={20} />
+                  <span>Anchors</span>
                 </Link>
               </li>
               <li>

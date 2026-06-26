@@ -89,7 +89,22 @@ The example file points all URLs at `localhost:5000` (backend) and `localhost:30
 NEXT_PUBLIC_DEV_BYPASS_AUTH=true
 ```
 
-### 4. Boot the full stack
+### 4. (Optional) Seed demo data
+
+Populate the database with demo confessions, users, reactions, comments, and reports for testing:
+
+```bash
+npm run seed
+```
+
+The seed script is idempotent — re-running it will not duplicate data. It creates:
+- 5 users (1 admin, 4 regular; password: `password123`)
+- 20 confessions across 5 categories
+- 50 reactions, 20 comments, 3 reports, 1 pending notification
+
+Stellar anchoring is stubbed when `STELLAR_FEATURES_ENABLED=false` (default).
+
+### 5. Boot the full stack
 
 > **Environment safety:** Never commit `.env` or `.env.local` files — only commit the `.env.example` templates. When sharing logs or asking for help in issues and PRs, redact all secrets, tokens, and private keys before pasting.
 
