@@ -51,6 +51,9 @@ export async function generateMetadata({
       (confession.content.length > 155 ? "…" : "")
     : "View confession on xConfess";
   const url = `${APP_URL}/confessions/${id}`;
+  const ogImage = confession
+    ? `${APP_URL}/api/og?text=${encodeURIComponent(confession.content.slice(0, 150))}`
+    : `${APP_URL}/api/og?text=XConfess`;
 
   return {
     title,
@@ -60,11 +63,20 @@ export async function generateMetadata({
       description,
       url,
       type: "article",
+      images: [
+        {
+          url: ogImage,
+          width: 1200,
+          height: 630,
+          alt: "XConfess - Anonymous Confession",
+        },
+      ],
     },
     twitter: {
-      card: "summary",
+      card: "summary_large_image",
       title,
       description,
+      images: [ogImage],
     },
     alternates: { canonical: url },
   };

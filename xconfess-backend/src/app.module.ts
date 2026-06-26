@@ -30,6 +30,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { EncryptionModule } from './encryption/encryption.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { DatabaseModule } from './database/database.module';
+import { FeatureFlagsModule } from './feature-flags/feature-flags.module';
 // ✅ Canonical queue stack: @nestjs/bullmq (BullMQ v4 + ioredis)
 // The legacy @nestjs/bull import has been removed. All queues use BullMQ.
 import { BullModule } from '@nestjs/bullmq';
@@ -73,7 +74,8 @@ import { BullModule } from '@nestjs/bullmq';
       useFactory: (config: ConfigService) => {
         const redisHost = config.get<string>('REDIS_HOST');
         const redisPort = config.get<number>('REDIS_PORT');
-        const jobsEnabled = config.get<string>('ENABLE_BACKGROUND_JOBS') === 'true';
+        const jobsEnabled =
+          config.get<string>('ENABLE_BACKGROUND_JOBS') === 'true';
 
         if (jobsEnabled) {
           if (!redisHost || !redisPort) {
@@ -132,6 +134,7 @@ import { BullModule } from '@nestjs/bullmq';
     EncryptionModule,
     CacheModule,
     DatabaseModule,
+    FeatureFlagsModule,
   ],
   controllers: [AppController],
   providers: [

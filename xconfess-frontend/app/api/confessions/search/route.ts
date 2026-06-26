@@ -1,152 +1,30 @@
-import { getApiBaseUrl } from "@/app/lib/config";
-import { createApiErrorResponse } from "@/lib/apiErrorHandler";
+import { NextRequest, NextResponse } from "next/server";
 
-const BASE_API_URL = getApiBaseUrl();
+const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3001";
 
-function parseNumber(value: unknown, fallback: number): number {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value === "string" && value.trim().length > 0) {
-    const parsed = Number(value);
-    if (Number.isFinite(parsed)) return parsed;
-  }
-  return fallback;
-}
-
-function parseBoolean(value: unknown, fallback = false): boolean {
-  if (typeof value === "boolean") return value;
-  if (typeof value === "string") {
-    const normalized = value.trim().toLowerCase();
-    if (normalized === "true") return true;
-    if (normalized === "false") return false;
-  }
-  return fallback;
-}
-
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const q = searchParams.get("q") ?? "";
-  const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10) || 1);
-  const limit = Math.max(1, Math.min(50, parseInt(searchParams.get("limit") ?? "10", 10) || 10));
-  const sort = searchParams.get("sort") ?? "newest";
-  const dateFrom = searchParams.get("dateFrom") ?? undefined;
-  const dateTo = searchParams.get("dateTo") ?? undefined;
-  const minReactions = searchParams.get("minReactions") ?? undefined;
-  const gender = searchParams.get("gender") ?? undefined;
-
-  const backendParams = new URLSearchParams();
-  backendParams.set("page", String(page));
-  backendParams.set("limit", String(limit));
-  // Map frontend 'sort' to backend 'sortBy' enum
-  if (sort && sort !== "newest") backendParams.set("sortBy", sort);
-  if (q) backendParams.set("q", q);
-  // Map frontend 'dateFrom'/'dateTo' to backend 'startDate'/'endDate'
-  if (dateFrom) backendParams.set("startDate", dateFrom);
-  if (dateTo) backendParams.set("endDate", dateTo);
-  if (minReactions != null && minReactions !== "")
-    backendParams.set("minReactions", minReactions);
-  if (gender) backendParams.set("gender", gender);
-
-  const searchUrl = `${BASE_API_URL}/confessions/search?${backendParams}`;
-
+export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get("Authorization");
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (authHeader) {
-      headers["Authorization"] = authHeader;
-    }
+    const { searchParams } = new URL(request.url);
 
-    const res = await fetch(searchUrl, {
-      method: "GET",
-      headers,
-      next: { revalidate: 15 },
+    const url = new URL(`${BACKEND_URL}/confessions/search`);
+    searchParams.forEach((value, key) => {
+      url.searchParams.append(key, value);
+    });
+
+    const res = await fetch(url.toString(), {
+      headers: {
+        Cookie: request.headers.get("cookie") || "",
+      },
     });
 
     if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      return createApiErrorResponse(errData, {
-        status: res.status,
-        fallbackMessage: `Search failed: ${res.statusText}`,
-        route: "GET /api/confessions/search"
-      });
+      return NextResponse.json({ results: [] }, { status: 200 });
     }
 
-    const data = (await res.json()) as {
-      data?: unknown[];
-      confessions?: unknown[];
-      hasMore?: boolean;
-      total?: number;
-      page?: number;
-      limit?: number;
-      degraded?: boolean;
-      partial?: boolean;
-      message?: string;
-      warnings?: string[];
-      meta?: {
-        total?: number;
-        page?: number;
-        limit?: number;
-        searchType?: string;
-        degraded?: boolean;
-        partial?: boolean;
-        warning?: string;
-        warnings?: string[];
-        message?: string;
-      };
-    };
-
-    const confessions = data.data ?? data.confessions ?? [];
-    const totalCount = parseNumber(data.total ?? data.meta?.total, 0);
-    const currentPage = parseNumber(data.page ?? data.meta?.page, page);
-    const currentLimit = parseNumber(data.limit ?? data.meta?.limit, limit);
-    const hasMore =
-      typeof data.hasMore === "boolean"
-        ? data.hasMore
-        : currentPage * currentLimit < totalCount;
-
-    const warnings = [
-      ...(Array.isArray(data.warnings) ? data.warnings : []),
-      ...(Array.isArray(data.meta?.warnings) ? data.meta.warnings : []),
-      ...(typeof data.meta?.warning === "string" ? [data.meta.warning] : []),
-    ].filter((entry) => typeof entry === "string" && entry.trim().length > 0);
-
-    const inferredPartialFromSearchType =
-      data.meta?.searchType === "fallback" ||
-      data.meta?.searchType === "ilike" ||
-      data.meta?.searchType === "partial";
-
-    const partial = parseBoolean(
-      data.partial ?? data.meta?.partial ?? inferredPartialFromSearchType,
-      false
-    );
-    const degraded = parseBoolean(
-      data.degraded ?? data.meta?.degraded,
-      warnings.length > 0
-    );
-
-    return Response.json({
-      confessions,
-      hasMore,
-      total: totalCount,
-      page: currentPage,
-      partial,
-      degraded,
-      warnings,
-      message:
-        (typeof data.message === "string" && data.message) ||
-        (typeof data.meta?.message === "string" && data.meta.message) ||
-        undefined,
-      meta: {
-        total: totalCount,
-        page: currentPage,
-        limit: currentLimit,
-        searchType: data.meta?.searchType ?? "unknown",
-      },
-    });
-  } catch (err) {
-    return createApiErrorResponse(err, {
-      status: 503,
-      fallbackMessage: "Search service unavailable",
-      route: "GET /api/confessions/search"
-    });
+    const data = await res.json();
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error("Search API error:", error);
+    return NextResponse.json({ results: [] }, { status: 200 });
   }
 }

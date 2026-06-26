@@ -62,7 +62,11 @@ export class ConfessionController {
       },
     },
   })
-  @ApiResponse({ status: 400, description: 'Validation error — message exceeds 1000 chars or invalid enum.' })
+  @ApiResponse({
+    status: 400,
+    description:
+      'Validation error — message exceeds 1000 chars or invalid enum.',
+  })
   @UsePipes(new ValidationPipe({ whitelist: true }))
   create(@Body() dto: CreateConfessionDto) {
     // Only allow canonical contract
@@ -187,6 +191,45 @@ export class ConfessionController {
   @ApiParam({ name: 'id', description: 'Confession UUID' })
   restore(@Param('id') id: string) {
     return this.service.restore(id);
+  }
+
+  @Post(':id/schedule')
+  @UseGuards(OptionalJwtAuthGuard)
+  @ApiOperation({ summary: 'Schedule a confession for future posting' })
+  @ApiParam({ name: 'id', description: 'Confession UUID' })
+  async scheduleConfession(
+    @Param('id') id: string,
+    @Body('publishAt') publishAt: string,
+  ) {
+    const schedulerService = new (
+      await import('./confession-scheduler.service')
+    ).ConfessionSchedulerService(this.service['confessionRepository']);
+    return schedulerService.scheduleConfession(id, new Date(publishAt));
+  }
+
+  @Delete(':id/schedule')
+  @UseGuards(OptionalJwtAuthGuard)
+  @ApiOperation({ summary: 'Cancel scheduled confession' })
+  @ApiParam({ name: 'id', description: 'Confession UUID' })
+  async cancelSchedule(@Param('id') id: string) {
+    const schedulerService = new (
+      await import('./confession-scheduler.service')
+    ).ConfessionSchedulerService(this.service['confessionRepository']);
+    return schedulerService.cancelSchedule(id);
+  }
+
+  @Get('user/scheduled')
+  @UseGuards(OptionalJwtAuthGuard)
+  @ApiOperation({ summary: 'Get user scheduled confessions' })
+  async getScheduled(@Req() req: Request) {
+    const userId = req['user']?.id;
+    if (!userId) {
+      return [];
+    }
+    const schedulerService = new (
+      await import('./confession-scheduler.service')
+    ).ConfessionSchedulerService(this.service['confessionRepository']);
+    return schedulerService.getScheduledConfessions(userId);
   }
 
   /**

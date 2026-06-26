@@ -130,6 +130,13 @@ export class AnonymousConfession {
   @Column({ type: 'tsvector', nullable: true })
   search_vector: string;
 
+  // Scheduling fields
+  @Column({ type: 'varchar', default: 'published' })
+  status: string; // 'draft', 'scheduled', 'published'
+
+  @Column({ name: 'publish_at', type: 'timestamp', nullable: true })
+  publishAt: Date;
+
   get content(): string {
     return this.message;
   }

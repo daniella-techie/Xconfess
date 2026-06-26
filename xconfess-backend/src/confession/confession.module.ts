@@ -15,6 +15,7 @@ import { ConfessionTag } from './entities/confession-tag.entity';
 import { AnonymousConfessionRepository } from './repository/confession.repository';
 import { ConfessionViewCacheService } from './confession-view-cache.service';
 import { TagService } from './tag.service';
+import { ConfessionSchedulerService } from './confession-scheduler.service';
 import { ReactionModule } from '../reaction/reaction.module';
 import { AnonymousContextMiddleware } from '../middleware/anonymous-context.middleware';
 import { ModerationModule } from '../moderation/moderation.module';
@@ -74,11 +75,16 @@ class MockRedis {
     AnonymousConfessionRepository,
     ConfessionViewCacheService,
     TagService,
+    ConfessionSchedulerService,
     { provide: 'VIEW_CACHE_EXPIRY', useValue: 60 * 60 },
     // Mock Redis provider for development without Redis server
     { provide: REDIS_TOKEN, useValue: new MockRedis() },
   ],
-  exports: [AnonymousConfessionRepository, ConfessionService],
+  exports: [
+    AnonymousConfessionRepository,
+    ConfessionService,
+    ConfessionSchedulerService,
+  ],
 })
 export class ConfessionModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
