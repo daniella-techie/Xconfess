@@ -1,4 +1,4 @@
-import {
+﻿import {
   Injectable,
   NotFoundException,
   BadRequestException,
@@ -436,6 +436,11 @@ export class AdminService {
   }
 
   // Users
+  
+  async unlockAccount(email: string): Promise<void> {
+    await this.lockoutService.clearLockout(email);
+    this.logger.log(Admin unlocked account: \);
+  }
   async banUser(
     userId: number,
     adminId: number,
@@ -827,3 +832,4 @@ export class AdminService {
     };
   }
 }
+

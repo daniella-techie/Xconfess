@@ -1,209 +1,113 @@
-# Quick Start Guide - Failed Notification Jobs Dashboard
+﻿# xConfess — Quick Start
 
-## 🚀 Get Started in 5 Minutes
+Get the full stack running locally in under 5 minutes.
 
-### 1. Install Dependencies (1 min)
+## Prerequisites
+
+| Tool | Version | Required for |
+|------|---------|-------------|
+| Node.js | >= 18 | Backend + Frontend |
+| npm | >= 9 | Root workspace |
+| pnpm | >= 8 | Backend (xconfess-backend uses pnpm) |
+| Docker | any | Postgres + Redis |
+| Rust + cargo | stable | Contracts only — skip if not touching contracts |
+
+## Step 1 — Clone the repo
+
 ```bash
-cd xconfess-frontend
+git clone https://github.com/Dataguru-tech/Xconfess.git
+cd Xconfess
+```
+
+## Step 2 — Install dependencies
+
+```bash
+# Root workspace (frontend deps)
 npm install
+
+# Backend deps (uses pnpm)
+cd xconfess-backend && pnpm install && cd ..
 ```
 
-### 2. Run Tests (1 min)
+## Step 3 — Start infrastructure (Postgres + Redis)
+
 ```bash
-npm test
+docker compose -f compose.yaml up -d
+
+# Verify both containers are healthy
+docker compose -f compose.yaml ps
 ```
 
-Expected output:
-```
-PASS  app/(dashboard)/admin/notifications/__tests__/page.test.tsx
-PASS  app/lib/api/__tests__/admin-notifications.test.ts
-PASS  app/lib/hooks/__tests__/useDebounce.test.ts
+Postgres runs on **localhost:55432**, Redis on **localhost:6379**.
 
-Test Suites: 3 passed, 3 total
-Tests:       50+ passed, 50+ total
+## Step 4 — Configure environment files
+
+```bash
+# Backend
+cp xconfess-backend/.env.example xconfess-backend/.env
+
+# Frontend
+cp xconfess-frontend/.env.example xconfess-frontend/.env.local
 ```
 
-### 3. Start Development Server (1 min)
+Minimum backend keys to set in `xconfess-backend/.env`:
+
+| Key | What to put |
+|-----|------------|
+| `JWT_SECRET` | Any long random string |
+| `APP_SECRET` | Any long random string |
+| `CONFESSION_ENCRYPTION_KEY` | 64-character hex string |
+
+All other values have safe defaults for local use. Frontend `.env.local` works out of the box with no changes.
+
+> **Never commit .env or .env.local files.** Only .env.example files belong in source control.
+
+## Step 5 — Seed demo data (optional)
+
+```bash
+npm run seed
+```
+
+Creates 5 users (password: `password123`), 20 confessions, 50 reactions, 20 comments, and 3 reports. Safe to re-run.
+
+## Step 6 — Start the dev servers
+
 ```bash
 npm run dev
 ```
 
-### 4. Access the Dashboard (1 min)
-1. Open browser: http://localhost:3000
-2. Login as admin
-3. Navigate to: http://localhost:3000/admin/notifications
+This starts backend and frontend concurrently. Once ready:
 
-### 5. Enable Mock Mode (Optional, 1 min)
-If backend is not running:
-```javascript
-// In browser console
-localStorage.setItem('adminMock', 'true');
-// Refresh page
-```
+| Service | URL |
+|---------|-----|
+| Frontend | http://localhost:3000 |
+| Backend API | http://localhost:5000 |
+| Health check | http://localhost:5000/api/health/live |
+| Swagger docs | http://localhost:5000/api/api-docs |
+| Postgres | localhost:55432 |
+| Redis | localhost:6379 |
 
-## 📋 What You'll See
+## Troubleshooting
 
-### Desktop View
-- Sidebar with "Notifications" link
-- Filter controls (Status, Date Range, Min Retries)
-- Table with failed jobs
-- Pagination controls
-- Replay buttons
+**Backend won't start** — check that Postgres and Redis containers are running (`docker compose ps`) and that `.env` has all required keys set.
 
-### Mobile View
-- Hamburger menu
-- Stacked filters
-- Card layout for jobs
-- Touch-friendly buttons
+**Frontend auth loop** — add `NEXT_PUBLIC_DEV_BYPASS_AUTH=true` to `xconfess-frontend/.env.local` to skip the auth flow during UI-only development.
 
-## 🎯 Try These Actions
+**pnpm not found** — install it with `npm install -g pnpm`.
 
-### 1. Filter Jobs
-- Change status dropdown
-- Set date range
-- Set minimum retries
-- Watch results update (debounced)
+**Port conflicts** — Postgres uses 55432 (not 5432) to avoid clashing with a local Postgres install.
 
-### 2. Navigate Pages
-- Click "Next" button
-- Click "Previous" button
-- See page numbers update
+## Running tests
 
-### 3. Replay a Job
-- Click "Replay" button
-- Confirm in dialog
-- Watch optimistic update
-- See success feedback
-
-### 4. Test Error Handling
-- Disconnect network
-- Try to load page
-- See error message
-- Click "Retry"
-
-## 🧪 Run Specific Tests
-
-### Page Component Tests
 ```bash
-npm test -- page.test.tsx
+# Backend unit tests
+npm run backend:test
+
+# Frontend tests
+npm run frontend:test
+
+# Full CI check (build + lint + test for all packages)
+npm run ci
 ```
 
-### API Client Tests
-```bash
-npm test -- admin-notifications.test.ts
-```
-
-### Hook Tests
-```bash
-npm test -- useDebounce.test.ts
-```
-
-### Watch Mode
-```bash
-npm test -- --watch
-```
-
-### Coverage Report
-```bash
-npm test -- --coverage
-```
-
-## 🐛 Troubleshooting
-
-### Tests Failing?
-```bash
-# Clear cache
-npm test -- --clearCache
-
-# Reinstall
-rm -rf node_modules package-lock.json
-npm install
-```
-
-### Page Not Loading?
-1. Check backend is running
-2. Check API URL in .env.local
-3. Enable mock mode
-4. Check browser console
-
-### TypeScript Errors?
-```bash
-# Type check
-npx tsc --noEmit
-
-# Rebuild
-npm run build
-```
-
-## 📚 Next Steps
-
-1. **Read Documentation**
-   - `app/(dashboard)/admin/notifications/README.md`
-   - `NOTIFICATIONS_DASHBOARD_IMPLEMENTATION.md`
-   - `VISUAL_GUIDE.md`
-
-2. **Review Code**
-   - Start with `page.tsx`
-   - Check `admin.ts` for API methods
-   - Look at test files for examples
-
-3. **Customize**
-   - Adjust filters
-   - Modify table columns
-   - Update styling
-   - Add features
-
-4. **Deploy**
-   - Follow `DEPLOYMENT_CHECKLIST.md`
-   - Test on staging
-   - Deploy to production
-
-## 🎓 Key Files
-
-| File | Purpose |
-|------|---------|
-| `page.tsx` | Main dashboard component |
-| `admin.ts` | API client methods |
-| `notification-jobs.ts` | Type definitions |
-| `useDebounce.ts` | Debounce hook |
-| `ConfirmDialog.tsx` | Confirmation dialog |
-| `page.test.tsx` | Component tests |
-
-## 💡 Tips
-
-1. **Use Mock Mode** for frontend development
-2. **Check Tests** for usage examples
-3. **Read Comments** in code for context
-4. **Use DevTools** to debug issues
-5. **Check Console** for errors
-
-## ✅ Success Checklist
-
-- [ ] Dependencies installed
-- [ ] Tests passing
-- [ ] Dev server running
-- [ ] Page loads successfully
-- [ ] Can filter jobs
-- [ ] Can paginate
-- [ ] Can replay jobs
-- [ ] No console errors
-
-## 🆘 Need Help?
-
-1. Check browser console for errors
-2. Review test files for examples
-3. Read documentation files
-4. Enable mock mode to isolate issues
-5. Check `TROUBLESHOOTING.md` (if exists)
-
-## 🎉 You're Ready!
-
-The dashboard is now running and ready for development or testing.
-
-**Happy coding!** 🚀
-
----
-
-**Time to Complete**: ~5 minutes
-**Difficulty**: Easy
-**Prerequisites**: Node.js, npm, basic React knowledge
+For the full reference including contract builds and individual service scripts, see the [README](./README.md).

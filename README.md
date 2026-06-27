@@ -1,4 +1,9 @@
-# xConfess
+﻿# xConfess
+
+![CI](https://github.com/Dataguru-tech/Xconfess/actions/workflows/ci.yml/badge.svg)
+![License](https://img.shields.io/github/license/Dataguru-tech/Xconfess)
+![Node](https://img.shields.io/badge/node-%3E%3D18-brightgreen)
+
 
 xConfess is a monorepo for an anonymous confession platform built with NestJS, Next.js 16, PostgreSQL, Redis-backed queues, WebSockets, and Soroban smart contracts on Stellar.
 
@@ -32,9 +37,9 @@ Follow these steps from a fresh clone to get the full stack running.
 
 ### Prerequisites
 
-- Node.js ≥ 18 and npm ≥ 9
+- Node.js â‰¥ 18 and npm â‰¥ 9
 - Docker (for Postgres and Redis)
-- Rust + `cargo` (only needed if working on contracts — see `docs/SOROBAN_SETUP.md`)
+- Rust + `cargo` (only needed if working on contracts â€” see `docs/SOROBAN_SETUP.md`)
 
 ### 1. Install dependencies
 
@@ -60,7 +65,7 @@ docker compose -f compose.yaml ps
 
 > **Security reminder:** Never commit `.env` or `.env.local` files. Always commit only the `.env.example` template files (which contain no real secrets). Do not paste real secret values into issues, PR descriptions, or comments.
 
-**Backend** — copy the sample and fill in the values marked `change-me`:
+**Backend** â€” copy the sample and fill in the values marked `change-me`:
 
 ```bash
 cp xconfess-backend/.env.example xconfess-backend/.env
@@ -70,14 +75,14 @@ Required keys to set before first boot (everything else has safe defaults):
 
 | Key | Purpose |
 |-----|---------|
-| `JWT_SECRET` | Signs auth tokens — use any long random string locally |
-| `APP_SECRET` | App-level HMAC secret — use any long random string locally |
+| `JWT_SECRET` | Signs auth tokens â€” use any long random string locally |
+| `APP_SECRET` | App-level HMAC secret â€” use any long random string locally |
 | `CONFESSION_ENCRYPTION_KEY` | 64-character hex string used to encrypt confession content |
 | `STELLAR_SERVER_SECRET` | Stellar keypair secret for on-chain operations (testnet only) |
 
 Mail (`MAIL_HOST`, `MAIL_USER`, `MAIL_PASSWORD`) and Stellar contract IDs are pre-filled with testnet values in the example file and can be left as-is for local development. Leave `STELLAR_FEATURES_ENABLED=false` (default) to boot without enforcing every contract ID; set it to `true` only when you need full on-chain anchoring and tipping.
 
-**Frontend** — copy the sample (no secrets required for basic local use):
+**Frontend** â€” copy the sample (no secrets required for basic local use):
 
 ```bash
 cp xconfess-frontend/.env.example xconfess-frontend/.env.local
@@ -106,7 +111,7 @@ Stellar anchoring is stubbed when `STELLAR_FEATURES_ENABLED=false` (default).
 
 ### 5. Boot the full stack
 
-> **Environment safety:** Never commit `.env` or `.env.local` files — only commit the `.env.example` templates. When sharing logs or asking for help in issues and PRs, redact all secrets, tokens, and private keys before pasting.
+> **Environment safety:** Never commit `.env` or `.env.local` files â€” only commit the `.env.example` templates. When sharing logs or asking for help in issues and PRs, redact all secrets, tokens, and private keys before pasting.
 
 ```bash
 npm run dev
@@ -165,7 +170,7 @@ cd xconfess-contracts
 # Format
 cargo fmt --all
 
-# Lint (clippy, warnings as errors — mirrors CI)
+# Lint (clippy, warnings as errors â€” mirrors CI)
 cargo clippy --workspace --all-targets --all-features -- -D warnings
 
 # Tests
@@ -204,13 +209,13 @@ npm run contract:lint
 npm run ci
 ```
 
-This runs `ci:backend`, `ci:frontend`, and `ci:contract` in sequence — build, lint, and test for each package.
+This runs `ci:backend`, `ci:frontend`, and `ci:contract` in sequence â€” build, lint, and test for each package.
 
 ## Contributing
 
 xConfess participates in Stellar Wave. Check the open issues for work tagged `Stellar Wave`, then coordinate before opening a PR.
 
-GrantFox campaign contributors should start with the [GrantFox contributor guide](docs/GRANTFOX_CONTRIBUTOR_GUIDE.md). It documents setup commands, required campaign labels (`Official Campaign`, `GrantFox OSS`, `Maybe Rewarded`), validation checks, and the `Closes #ISSUE_NUMBER` PR-linking requirement.
+Before opening a PR, read the [small PR policy](docs/SMALL_PR_POLICY.md). Keep each PR focused on one issue, include tests for code changes, and screenshots for UI changes.
 
 When your PR is ready for review, use the [Ready for Review comment template](docs/WAVE_5_READY_FOR_REVIEW_TEMPLATE.md) to signal maintainers.
 
@@ -224,23 +229,3 @@ xConfess participates in the GrantFox Official Campaign. All related pull reques
 - `xconfess-backend/README.md`
 - `xconfess-frontend/README.md`
 - `xconfess-contracts/README.md`
-# README.md — contributing section patch
-
-Find the **Contributing** section in `README.md` and insert the two lines marked `+` below.
-The surrounding lines are shown for context; do not duplicate them.
-
-```diff
- ## Contributing
-
- xConfess participates in Stellar Wave. Check the open issues for work tagged
- Stellar Wave, then coordinate before opening a PR.
-+
-+Before opening a PR, read the [small PR policy](docs/SMALL_PR_POLICY.md).
-+Keep each PR focused on one issue, include tests for code changes, and
-+screenshots for UI changes.
-
- When your PR is ready for review, use the Ready for Review comment template
- to signal maintainers.
-```
-
-That is the only change to `README.md`.

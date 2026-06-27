@@ -1,4 +1,4 @@
-import { maskUserId } from '../utils/mask-user-id';
+﻿import { maskUserId } from '../utils/mask-user-id';
 import {
   Injectable,
   UnauthorizedException,
@@ -12,6 +12,7 @@ import { UserService } from '../user/user.service';
 import { EmailService } from '../email/email.service';
 import { PasswordResetService } from './password-reset.service';
 import { AnonymousUserService } from '../user/anonymous-user.service';
+import { LockoutService } from './lockout.service';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { UserResponse } from '../user/dto/user-response.dto';
@@ -54,7 +55,7 @@ export class AuthService {
         user.emailIv,
         user.emailTag,
       );
-      // resetPasswordToken and resetPasswordExpires are internal — never sent to clients.
+      // resetPasswordToken and resetPasswordExpires are internal â€” never sent to clients.
       return {
         id: user.id,
         username: user.username,
@@ -83,14 +84,26 @@ export class AuthService {
     user: UserResponse;
     anonymousUserId: string;
   }> {
+    // Check lockout before validating credentials
+    const lockStatus = await this.lockoutService.getStatus(email);
+    if (lockStatus.isLocked) {
+      throw new AppException(
+        'Too many failed login attempts. Please try again later.',
+        ErrorCode.AUTH_INVALID_CREDENTIALS,
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+
     const user = await this.validateUser(email, password);
     if (!user) {
+      await this.lockoutService.recordFailedAttempt(email);
       throw new AppException(
         'Invalid credentials',
         ErrorCode.AUTH_INVALID_CREDENTIALS,
         HttpStatus.UNAUTHORIZED,
       );
     }
+    await this.lockoutService.clearLockout(email);
     const anonymousUser =
       await this.anonymousUserService.getOrCreateForUserSession(user.id);
     const role = user.role || UserRole.USER;
@@ -124,7 +137,7 @@ export class AuthService {
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 1);
 
-    // Token stored internally — never returned to caller or serialized to HTTP response.
+    // Token stored internally â€” never returned to caller or serialized to HTTP response.
     await this.userService.setResetPasswordToken(user.id, token, expiresAt);
     return token;
   }
@@ -209,7 +222,7 @@ export class AuthService {
         user.emailIv,
         user.emailTag,
       );
-      // resetPasswordToken and resetPasswordExpires are internal — never sent to clients.
+      // resetPasswordToken and resetPasswordExpires are internal â€” never sent to clients.
       return {
         id: user.id,
         username: user.username,
@@ -317,3 +330,5 @@ export class AuthService {
     }
   }
 }
+
+
