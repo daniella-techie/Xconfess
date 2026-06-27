@@ -14,6 +14,7 @@ import {
   Req,
   Patch,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
@@ -34,6 +35,7 @@ import { SearchConfessionDto } from './dto/search-confession.dto';
 import { UpdateConfessionDto } from './dto/update-confession.dto';
 import { OptionalJwtAuthGuard } from '../auth/optional-jwt-auth.guard';
 import { SearchDiscoveryService } from '../search-discovery/search-discovery.service';
+import { SparseFieldsetsInterceptor } from '../common/interceptors/sparse-fieldsets.interceptor';
 
 const flattenValidationErrors = (
   errors: ValidationError[],
@@ -70,6 +72,7 @@ const searchValidationPipe = new ValidationPipe({
 
 @ApiTags('Confessions')
 @Controller('confessions')
+@UseInterceptors(SparseFieldsetsInterceptor)
 export class ConfessionController {
   // For testing compatibility: expose getConfessionById
   getConfessionById(id: string, req: Request) {

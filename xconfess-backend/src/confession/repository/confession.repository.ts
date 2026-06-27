@@ -93,9 +93,9 @@ export class AnonymousConfessionRepository extends Repository<AnonymousConfessio
 
     // Build the query with ts_rank for relevance scoring
     const queryBuilder = this.createQueryBuilder('confession')
-      .leftJoinAndSelect('confession.anonymousUser', 'anonymousUser')
-      .leftJoinAndSelect('anonymousUser.userLinks', 'userLinks')
-      .leftJoinAndSelect('userLinks.user', 'user')
+      .leftJoin('confession.anonymousUser', 'anonymousUser')
+      .leftJoin('anonymousUser.userLinks', 'userLinks')
+      .leftJoin('userLinks.user', 'user')
       .leftJoinAndSelect('confession.reactions', 'reactions')
       .where('confession.search_vector @@ plainto_tsquery(:sanitizedTerm)', {
         sanitizedTerm,
@@ -107,7 +107,20 @@ export class AnonymousConfessionRepository extends Repository<AnonymousConfessio
       })
       .andWhere(
         "(anonymousUser.userLinks IS NULL OR anonymousUser.userLinks = '{}' OR user.privacy_settings IS NULL OR user.privacy_settings->>'isDiscoverable' = 'true' OR JSON_TYPE(user.privacy_settings, '$.isDiscoverable') IS NULL)",
-      );
+      )
+      .select([
+        'confession.id',
+        'confession.message',
+        'confession.gender',
+        'confession.created_at',
+        'confession.view_count',
+        'confession.isAnchored',
+        'confession.stellarTxHash',
+        'confession.moderationStatus',
+        'reactions.id',
+        'reactions.emoji',
+        'reactions.createdAt',
+      ]);
 
     // Apply anonymous-only filter if requested
     if (dto?.anonymousOnly) {
@@ -192,9 +205,9 @@ export class AnonymousConfessionRepository extends Repository<AnonymousConfessio
     const offset = (page - 1) * safeLimit;
 
     const queryBuilder = this.createQueryBuilder('confession')
-      .leftJoinAndSelect('confession.anonymousUser', 'anonymousUser')
-      .leftJoinAndSelect('anonymousUser.userLinks', 'userLinks')
-      .leftJoinAndSelect('userLinks.user', 'user')
+      .leftJoin('confession.anonymousUser', 'anonymousUser')
+      .leftJoin('anonymousUser.userLinks', 'userLinks')
+      .leftJoin('userLinks.user', 'user')
       .leftJoinAndSelect('confession.reactions', 'reactions')
       .where('confession.message ILIKE :searchTerm', {
         searchTerm: `%${searchTerm}%`,
@@ -206,7 +219,20 @@ export class AnonymousConfessionRepository extends Repository<AnonymousConfessio
       })
       .andWhere(
         "(anonymousUser.userLinks IS NULL OR anonymousUser.userLinks = '{}' OR user.privacy_settings IS NULL OR user.privacy_settings->>'isDiscoverable' = 'true' OR JSON_TYPE(user.privacy_settings, '$.isDiscoverable') IS NULL)",
-      );
+      )
+      .select([
+        'confession.id',
+        'confession.message',
+        'confession.gender',
+        'confession.created_at',
+        'confession.view_count',
+        'confession.isAnchored',
+        'confession.stellarTxHash',
+        'confession.moderationStatus',
+        'reactions.id',
+        'reactions.emoji',
+        'reactions.createdAt',
+      ]);
 
     // Apply anonymous-only filter if requested
     if (dto?.anonymousOnly) {
@@ -317,10 +343,23 @@ export class AnonymousConfessionRepository extends Repository<AnonymousConfessio
     const resolvedEndAt = endAt ?? new Date(todayUTC + 24 * 60 * 60 * 1000);
 
     return this.createQueryBuilder('confession')
-      .leftJoinAndSelect('confession.anonymousUser', 'anonymousUser')
-      .leftJoinAndSelect('anonymousUser.userLinks', 'userLinks')
-      .leftJoinAndSelect('userLinks.user', 'user')
+      .leftJoin('confession.anonymousUser', 'anonymousUser')
+      .leftJoin('anonymousUser.userLinks', 'userLinks')
+      .leftJoin('userLinks.user', 'user')
       .leftJoinAndSelect('confession.reactions', 'reactions')
+      .select([
+        'confession.id',
+        'confession.message',
+        'confession.gender',
+        'confession.created_at',
+        'confession.view_count',
+        'confession.isAnchored',
+        'confession.stellarTxHash',
+        'confession.moderationStatus',
+        'reactions.id',
+        'reactions.emoji',
+        'reactions.createdAt',
+      ])
       .addSelect(
         // Recent-reaction weight uses the same inclusive-start/exclusive-end
         // boundaries so the score is consistent with the window filter below.
@@ -371,11 +410,10 @@ export class AnonymousConfessionRepository extends Repository<AnonymousConfessio
     const queryBuilder = this.createQueryBuilder('confession')
       .innerJoin('confession.confessionTags', 'confessionTag')
       .innerJoin('confessionTag.tag', 'tag')
-      .leftJoinAndSelect('confession.anonymousUser', 'anonymousUser')
-      .leftJoinAndSelect('anonymousUser.userLinks', 'userLinks')
-      .leftJoinAndSelect('userLinks.user', 'user')
+      .leftJoin('confession.anonymousUser', 'anonymousUser')
+      .leftJoin('anonymousUser.userLinks', 'userLinks')
+      .leftJoin('userLinks.user', 'user')
       .leftJoinAndSelect('confession.reactions', 'reactions')
-      .leftJoinAndSelect('reactions.anonymousUser', 'reactionUser')
       .where('tag.name = :tagName', { tagName: tagName.toLowerCase().trim() })
       .andWhere('confession.isDeleted = false')
       .andWhere('confession.isHidden = false')
@@ -391,11 +429,12 @@ export class AnonymousConfessionRepository extends Repository<AnonymousConfessio
         'confession.gender',
         'confession.created_at',
         'confession.view_count',
+        'confession.isAnchored',
+        'confession.stellarTxHash',
         'confession.moderationStatus',
         'reactions.id',
         'reactions.emoji',
-        'reactions.created_at',
-        'reactionUser.id',
+        'reactions.createdAt',
       ]);
 
     if (parsedCursor) {

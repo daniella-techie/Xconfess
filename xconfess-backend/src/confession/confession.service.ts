@@ -45,6 +45,7 @@ import { TagService } from './tag.service';
 import { ConfessionTag } from './entities/confession-tag.entity';
 import { toWindowBoundaries, TrendingWindow } from 'src/types/analytics.types';
 import { GetUserConfessionsDto } from './dto/get-user-confessions.dto';
+import { mapToSlimConfession } from './utils/confession-mapper';
 
 @Injectable()
 export class ConfessionService {
@@ -267,9 +268,9 @@ export class ConfessionService {
 
     const qb = this.confessionRepo
       .createQueryBuilder('confession')
-      .leftJoinAndSelect('confession.anonymousUser', 'anonymousUser')
-      .leftJoinAndSelect('anonymousUser.userLinks', 'userLinks')
-      .leftJoinAndSelect('userLinks.user', 'user')
+      .leftJoin('confession.anonymousUser', 'anonymousUser')
+      .leftJoin('anonymousUser.userLinks', 'userLinks')
+      .leftJoin('userLinks.user', 'user')
       .andWhere('confession.isDeleted = false')
       .andWhere('confession.isHidden = false')
       .andWhere('confession.moderationStatus IN (:...statuses)', {
@@ -279,18 +280,18 @@ export class ConfessionService {
         "(anonymousUser.userLinks IS NULL OR anonymousUser.userLinks = '{}' OR user.privacy_settings IS NULL OR user.privacy_settings->>'isDiscoverable' = 'true' OR JSON_TYPE(user.privacy_settings, '$.isDiscoverable') IS NULL)",
       )
       .leftJoinAndSelect('confession.reactions', 'reactions')
-      .leftJoinAndSelect('reactions.anonymousUser', 'reactionUser')
       .select([
         'confession.id',
         'confession.message',
         'confession.gender',
         'confession.created_at',
         'confession.view_count',
+        'confession.isAnchored',
+        'confession.stellarTxHash',
         'confession.moderationStatus',
         'reactions.id',
         'reactions.emoji',
         'reactions.createdAt',
-        'reactionUser.id',
       ]);
 
     if (dto.gender) {
@@ -312,10 +313,10 @@ export class ConfessionService {
       qb.addSelect(
         (sub) =>
           sub
-            .select('COUNT(*)')
-            .from('reaction', 'r')
-            .where('r.confession_id = confession.id'),
-        'reaction_count',
+             .select('COUNT(*)')
+             .from('reaction', 'r')
+             .where('r.confession_id = confession.id'),
+         'reaction_count',
       )
         .orderBy('reaction_count', 'DESC')
         .addOrderBy('confession.created_at', 'DESC');
@@ -331,10 +332,13 @@ export class ConfessionService {
     const hasMore = items.length > limit;
     const resultItems = hasMore ? items.slice(0, limit) : items;
 
-    const decryptedItems = resultItems.map((item) => ({
-      ...item,
-      message: decryptConfession(item.message, this.aesKey),
-    }));
+    const decryptedItems = resultItems.map((item) => {
+      const decrypted = {
+        ...item,
+        message: decryptConfession(item.message, this.aesKey),
+      };
+      return mapToSlimConfession(decrypted);
+    });
 
     let nextCursor: string | null = null;
     if (hasMore && decryptedItems.length > 0) {
@@ -534,8 +538,16 @@ export class ConfessionService {
       sampled,
     });
 
+    const mappedConfessions = (result?.confessions || []).map((item) => {
+      const decrypted = {
+        ...item,
+        message: decryptConfession(item.message, this.aesKey),
+      };
+      return mapToSlimConfession(decrypted);
+    });
+
     return {
-      data: result?.confessions || [],
+      data: mappedConfessions,
       meta: {
         total: result?.total || 0,
         page: dto.page,
@@ -572,8 +584,16 @@ export class ConfessionService {
       sampled,
     });
 
+    const mappedConfessions = (result?.confessions || []).map((item) => {
+      const decrypted = {
+        ...item,
+        message: decryptConfession(item.message, this.aesKey),
+      };
+      return mapToSlimConfession(decrypted);
+    });
+
     return {
-      data: result?.confessions || [],
+      data: mappedConfessions,
       meta: {
         total: result?.total || 0,
         page: dto.page,
@@ -670,7 +690,14 @@ export class ConfessionService {
     // so edge-of-day records are counted consistently.
     const { startAt, endAt } = toWindowBoundaries(TrendingWindow.DAY);
     const confs = await this.confessionRepo.findTrending(10, startAt, endAt);
-    return { data: confs };
+    const mapped = confs.map((item) => {
+      const decrypted = {
+        ...item,
+        message: decryptConfession(item.message, this.aesKey),
+      };
+      return mapToSlimConfession(decrypted);
+    });
+    return { data: mapped };
   }
 
   async updateModerationStatus(
@@ -1098,10 +1125,13 @@ export class ConfessionService {
     const { confessions, nextCursor, hasMore } =
       await this.confessionRepo.findByTag(tagName, page, limit, cursor);
 
-    const decryptedItems = confessions.map((item) => ({
-      ...item,
-      message: decryptConfession(item.message, this.aesKey),
-    }));
+    const decryptedItems = confessions.map((item) => {
+      const decrypted = {
+        ...item,
+        message: decryptConfession(item.message, this.aesKey),
+      };
+      return mapToSlimConfession(decrypted);
+    });
 
     const result = new CursorPaginatedResponseDto(
       decryptedItems,
