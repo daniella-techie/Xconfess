@@ -1,4 +1,4 @@
-import axios, { AxiosError, AxiosResponse } from "axios";
+﻿import axios, { AxiosError, AxiosResponse } from "axios";
 import { logError } from "@/app/lib/utils/errorHandler";
 import { useAuthStore } from "@/app/lib/store/authStore";
 import { getApiBaseUrl } from "@/app/lib/config";
@@ -9,6 +9,15 @@ const apiClient = axios.create({
 	timeout: 30000,
 });
 
+/**
+ * Read the XSRF-TOKEN cookie set by the backend after each request.
+ * Returns an empty string if the cookie is absent (e.g. before first response).
+ */
+function getCsrfToken(): string {
+  if (typeof document === 'undefined') return '';
+  const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : '';
+}
 // Request interceptor for adding auth token
 apiClient.interceptors.request.use(
 	(config) => {
@@ -18,6 +27,11 @@ apiClient.interceptors.request.use(
 		// Generate correlation ID for tracing
 		const correlationId = crypto.randomUUID();
 		config.headers["X-Correlation-ID"] = correlationId;
+        // Send CSRF token on state-changing requests
+        const csrfToken = getCsrfToken();
+        if (csrfToken) {
+            config.headers['X-XSRF-TOKEN'] = csrfToken;
+        }
 		config.correlationId = correlationId;
 
 		return config;
@@ -56,7 +70,7 @@ apiClient.interceptors.response.use(
 
 		config.__retryCount = config.__retryCount ?? 0;
 
-		// Handle 401 Unauthorized — clear auth state and let AuthGuard handle redirect
+		// Handle 401 Unauthorized â€” clear auth state and let AuthGuard handle redirect
 		if (error.response?.status === 401) {
 			// Signal the store: clears localStorage tokens + resets isAuthenticated.
 			// AuthGuard detects isAuthenticated: false and does router.push('/login').
@@ -66,7 +80,7 @@ apiClient.interceptors.response.use(
 			return Promise.reject(error);
 		}
 
-		// Handle 403 Forbidden — no retry
+		// Handle 403 Forbidden â€” no retry
 		if (error.response?.status === 403) {
 			logError(error, "API Client - Forbidden", { url: config.url });
 			return Promise.reject(error);
@@ -159,3 +173,4 @@ export const dataExportApi = {
 		return response.data;
 	},
 };
+

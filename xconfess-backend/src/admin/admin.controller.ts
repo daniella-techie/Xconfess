@@ -1,4 +1,4 @@
-import {
+﻿import {
   Controller,
   Get,
   Patch,
@@ -205,7 +205,7 @@ export class AdminController {
   @ApiBody({
     schema: {
       example: {
-        resolutionNotes: 'Content removed — violates community guidelines.',
+        resolutionNotes: 'Content removed â€” violates community guidelines.',
         templateId: 3,
       },
     },
@@ -252,7 +252,7 @@ export class AdminController {
     schema: {
       example: {
         reportIds: ['abc-123', 'def-456'],
-        notes: 'Batch resolution — content removed.',
+        notes: 'Batch resolution â€” content removed.',
       },
     },
   })
@@ -363,6 +363,16 @@ export class AdminController {
     return this.adminService.getUserHistory(parseInt(id, 10));
   }
 
+  
+  @Post('users/unlock-account')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Unlock a locked account by email' })
+  @ApiBody({ schema: { example: { email: 'user@example.com' } } })
+  @ApiResponse({ status: 200, description: 'Account unlocked.' })
+  async unlockAccount(@Body('email') email: string) {
+    await this.adminService.unlockAccount(email);
+    return { message: Account unlocked for \ };
+  }
   @Patch('users/:id/ban')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Ban a user account' })
@@ -618,3 +628,4 @@ export class AdminController {
     return result;
   }
 }
+

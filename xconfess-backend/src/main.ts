@@ -1,4 +1,4 @@
-import { NestFactory } from '@nestjs/core';
+﻿import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -12,17 +12,23 @@ import { RequestIdMiddleware } from './middleware/request-id.middleware';
 import { WebSocketAdapter } from './websocket/websocket.adapter';
 import { AppLogger } from './logger/logger.service';
 
+import cookieParser from 'cookie-parser';
+import {
+  cookieParserMiddleware,
+  csrfMiddleware,
+  csrfCookieSetter,
+} from './common/midleware/middleware';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
 
-  // ── 1. Request-ID must be first so all downstream code sees it ──────────────
+  // â”€â”€ 1. Request-ID must be first so all downstream code sees it â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const requestIdMiddleware = new RequestIdMiddleware();
   app.use(requestIdMiddleware.use.bind(requestIdMiddleware));
 
   app.enableShutdownHooks();
 
-  // ── 2. Security headers — single authoritative path for all HTTP responses ──
+  // â”€â”€ 2. Security headers â€” single authoritative path for all HTTP responses â”€â”€
   //    SecurityMiddleware is intentionally NOT registered as a Nest middleware
   //    because it was never wired into the middleware consumer.  Applying Helmet
   //    here in bootstrap ensures it runs on every request without exception.
@@ -37,12 +43,12 @@ async function bootstrap() {
         },
       },
       // helmet v7 removed the xssFilter / noSniff shorthand aliases;
-      // xssProtection and noSniff are enabled by default — no need to re-declare.
+      // xssProtection and noSniff are enabled by default â€” no need to re-declare.
       frameguard: { action: 'deny' },
     }),
   );
 
-  // ── 3. CORS — one allowed origin derived from config ────────────────────────
+  // â”€â”€ 3. CORS â€” one allowed origin derived from config â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   //    Both HTTP and the WebSocket adapter read FRONTEND_URL so there is a
   //    single documented source of truth for allowed origins.
   const frontendUrl =
@@ -54,10 +60,10 @@ async function bootstrap() {
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
   });
 
-  // ── 4. WebSocket adapter — reads the same FRONTEND_URL ──────────────────────
+  // â”€â”€ 4. WebSocket adapter â€” reads the same FRONTEND_URL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   app.useWebSocketAdapter(new WebSocketAdapter(app, configService));
 
-  // ── 5. Compression ──────────────────────────────────────────────────────────
+  // â”€â”€ 5. Compression â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   app.use(
     compression({
       filter: (req, res) => {
@@ -70,6 +76,22 @@ async function bootstrap() {
     }),
   );
 
+
+  // ── 6. Cookie parser (required by csurf) ────────────────────────────────────
+  app.use(cookieParserMiddleware);
+
+  // ── 7. CSRF protection ────────────────────────────────────────────────────────
+  //    Webhooks are exempt — they use HMAC signature verification instead.
+  //    All other POST / PUT / PATCH / DELETE routes require a valid CSRF token.
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/api/webhooks/')) {
+      return next();
+    }
+    csrfMiddleware(req as any, res as any, (err) => {
+      if (err) return next(err);
+      csrfCookieSetter(req as any, res as any, next);
+    });
+  });
   app.setGlobalPrefix('api');
 
   app.useGlobalPipes(
@@ -89,7 +111,7 @@ async function bootstrap() {
     const config = new DocumentBuilder()
       .setTitle('xConfess API')
       .setDescription(
-        'Anonymous confession platform API — confessions, reactions, messages, reports, admin, and Stellar integration.',
+        'Anonymous confession platform API â€” confessions, reactions, messages, reports, admin, and Stellar integration.',
       )
       .setVersion('1.0')
       .addBearerAuth()
@@ -112,7 +134,7 @@ async function bootstrap() {
   const port = configService.get<number>('app.port', 3000);
   await app.listen(port);
 
-  // ── Startup Summary ────────────────────────────────────────────────────────
+  // â”€â”€ Startup Summary â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const logger = app.get(AppLogger);
   const env = configService.get<string>('NODE_ENV', 'development');
   const dbHost = configService.get<string>('DB_HOST', 'localhost');
@@ -122,7 +144,7 @@ async function bootstrap() {
   const backgroundJobMode = configService.get<string>('ENABLE_BACKGROUND_JOBS', 'false');
   
   logger.log(
-    `🚀 Application started successfully`,
+    `ðŸš€ Application started successfully`,
     'Bootstrap'
   );
   logger.log(
@@ -131,3 +153,4 @@ async function bootstrap() {
   );
 }
 bootstrap();
+
