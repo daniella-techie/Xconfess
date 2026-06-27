@@ -22,6 +22,28 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     const appException = AppException.fromHttpException(exception);
     const exceptionResponse = appException.getResponse() as any;
+    const requestId = (request as any).requestId || 'unknown';
+
+    if (status === HttpStatus.TOO_MANY_REQUESTS) {
+      const retryAfter = exceptionResponse.retryAfter ?? 60;
+      response.setHeader('Retry-After', retryAfter.toString());
+      response.setHeader('X-Request-Id', requestId);
+      this.logger.warn(
+        `RATE_LIMIT_EXCEEDED method=${request.method} path=${request.url} ip=${request.ip} requestId=${requestId} retryAfter=${retryAfter}`,
+      );
+      response.status(status).json({
+        statusCode: status,
+        code: exceptionResponse.code || ErrorCode.RATE_LIMIT_EXCEEDED,
+        message:
+          exceptionResponse.message ||
+          'Too many requests. Please wait a moment and try again.',
+        retryAfter,
+        requestId,
+        timestamp: new Date().toISOString(),
+        path: request.url,
+      });
+      return;
+    }
 
     const errorResponse = {
       status,
@@ -30,7 +52,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       details: exceptionResponse.details,
       timestamp: new Date().toISOString(),
       path: request.url,
-      requestId: (request as any).requestId || 'unknown',
+      requestId,
     };
 
     if (status >= HttpStatus.INTERNAL_SERVER_ERROR) {

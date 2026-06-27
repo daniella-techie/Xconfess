@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
       const errData = await response.json().catch(() => ({}));
       return createApiErrorResponse(errData, {
         status: response.status,
+          upstreamResponse: response,
         fallbackMessage: "Failed to fetch preferences",
         route: "GET /api/notifications/preference"
       });
@@ -57,6 +58,7 @@ export async function PUT(request: NextRequest) {
       const errData = await response.json().catch(() => ({}));
       return createApiErrorResponse(errData, {
         status: response.status,
+          upstreamResponse: response,
         fallbackMessage: "Failed to save preferences",
         route: "PUT /api/notifications/preference"
       });

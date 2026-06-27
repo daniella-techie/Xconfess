@@ -5,6 +5,7 @@ export interface AppExceptionResponse {
   message: string;
   code: ErrorCode;
   details?: any;
+  retryAfter?: number;
 }
 
 export class AppException extends HttpException {
@@ -13,8 +14,9 @@ export class AppException extends HttpException {
     code: ErrorCode = ErrorCode.INTERNAL_SERVER_ERROR,
     status: HttpStatus = HttpStatus.INTERNAL_SERVER_ERROR,
     details?: any,
+    retryAfter?: number,
   ) {
-    super({ message, code, details }, status);
+    super({ message, code, details, retryAfter }, status);
   }
 
   static fromHttpException(exception: HttpException): AppException {
@@ -23,18 +25,20 @@ export class AppException extends HttpException {
     let message = exception.message;
     let code = ErrorCode.INTERNAL_SERVER_ERROR;
     let details: any;
+    let retryAfter: number | undefined;
 
     if (typeof response === 'object' && response !== null) {
       const res = response as any;
       message = res.message || message;
       code = res.code || this.mapStatusToCode(status);
       details = res.details;
+      retryAfter = res.retryAfter;
     } else {
       message = typeof response === 'string' ? response : message;
       code = this.mapStatusToCode(status);
     }
 
-    return new AppException(message, code as ErrorCode, status, details);
+    return new AppException(message, code as ErrorCode, status, details, retryAfter);
   }
 
   private static mapStatusToCode(status: number): ErrorCode {
@@ -56,7 +60,7 @@ export class AppException extends HttpException {
       case HttpStatus.PAYLOAD_TOO_LARGE:
         return ErrorCode.REQUEST_TOO_LARGE;
       case HttpStatus.TOO_MANY_REQUESTS:
-        return ErrorCode.THROTTLED;
+        return ErrorCode.RATE_LIMIT_EXCEEDED;
       default:
         return ErrorCode.INTERNAL_SERVER_ERROR;
     }

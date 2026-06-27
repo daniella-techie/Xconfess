@@ -22,6 +22,7 @@ export async function PATCH(request: NextRequest) {
       const errData = await response.json().catch(() => ({}));
       return createApiErrorResponse(errData, {
         status: response.status,
+          upstreamResponse: response,
         fallbackMessage: "Failed to mark all as read",
         route: "PATCH /api/notifications/read-all"
       });

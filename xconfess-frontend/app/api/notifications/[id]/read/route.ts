@@ -26,6 +26,7 @@ export async function PATCH(
       const errData = await response.json().catch(() => ({}));
       return createApiErrorResponse(errData, {
         status: response.status,
+          upstreamResponse: response,
         fallbackMessage: "Failed to mark notification as read",
         route: "PATCH /api/notifications/[id]/read"
       });

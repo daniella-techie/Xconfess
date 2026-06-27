@@ -32,6 +32,7 @@ export async function GET(request: NextRequest) {
       const errData = await response.json().catch(() => ({}));
       return createApiErrorResponse(errData, {
         status: response.status,
+          upstreamResponse: response,
         correlationId,
         fallbackMessage: "Failed to fetch notifications",
         route: "GET /api/notifications",

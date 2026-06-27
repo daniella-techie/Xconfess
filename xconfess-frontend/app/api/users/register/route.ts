@@ -23,6 +23,7 @@ export async function POST(request: Request) {
       const errData = await response.json().catch(() => ({}));
       return createApiErrorResponse(errData, {
         status: response.status,
+          upstreamResponse: response,
         correlationId,
         route: "POST /api/users/register"
       });

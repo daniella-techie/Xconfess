@@ -36,6 +36,7 @@ export async function POST(
         const errorData = await response.json().catch(() => ({}));
         return createApiErrorResponse(errorData, {
           status: response.status,
+          upstreamResponse: response,
           fallbackMessage: `Failed to anchor confession: ${response.statusText}`,
           route: "POST /api/confessions/[id]/anchor"
         });
