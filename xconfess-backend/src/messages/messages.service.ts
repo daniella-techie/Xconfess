@@ -14,6 +14,10 @@ import { AnonymousUserService } from '../user/anonymous-user.service';
 import { UserAnonymousUser } from '../user/entities/user-anonymous-link.entity';
 import { AnonymousUser } from '../user/entities/anonymous-user.entity';
 import { OutboxEvent, OutboxStatus } from '../common/entities/outbox-event.entity';
+import {
+  ENCRYPTED_PREVIEW,
+  isEncryptedPayload,
+} from './crypto/message-e2e.crypto';
 
 @Injectable()
 export class MessagesService {
@@ -34,6 +38,12 @@ export class MessagesService {
     createMessageDto: CreateMessageDto,
     user: User,
   ): Promise<Message> {
+    if (!isEncryptedPayload(createMessageDto.content)) {
+      throw new BadRequestException(
+        'Message content must be an E2E ciphertext envelope',
+      );
+    }
+
     const confession = await this.confessionRepository.findOne({
       where: { id: createMessageDto.confession_id },
       relations: ['anonymousUser', 'anonymousUser.userLinks', 'anonymousUser.userLinks.user'],
@@ -53,6 +63,7 @@ export class MessagesService {
         sender,
         confession,
         content: createMessageDto.content,
+        isEncrypted: true,
       });
 
       const savedMessage = await messageRepo.save(message);
@@ -68,7 +79,7 @@ export class MessagesService {
               confessionId: confession.id,
               recipientEmail,
               senderId: sender.id,
-              messagePreview: createMessageDto.content.substring(0, 100),
+              messagePreview: ENCRYPTED_PREVIEW,
             },
             idempotencyKey: `message:${savedMessage.id}`,
             status: OutboxStatus.PENDING,
@@ -140,10 +151,12 @@ export class MessagesService {
         threadsMap.set(threadId, {
           confessionId: m.confession.id,
           senderId: m.sender.id,
+          authorAnonymousUserId: m.confession.anonymousUser?.id ?? null,
           confessionMessage:
             m.confession.message.substring(0, 50) +
             (m.confession.message.length > 50 ? '...' : ''),
-          lastMessage: m.content,
+          lastMessage: m.isEncrypted ? ENCRYPTED_PREVIEW : m.content,
+          lastMessageEncrypted: m.isEncrypted,
           lastMessageAt: m.createdAt,
           hasUnread: false,
           isAuthor: anonIds.includes(m.confession.anonymousUser?.id),
@@ -158,6 +171,11 @@ export class MessagesService {
     // Validate reply content
     if (!dto.reply || dto.reply.trim() === '') {
       throw new BadRequestException('Reply content cannot be empty');
+    }
+    if (!isEncryptedPayload(dto.reply)) {
+      throw new BadRequestException(
+        'Reply content must be an E2E ciphertext envelope',
+      );
     }
     const message = await this.messageRepository.findOne({
       where: { id: dto.message_id },
@@ -183,6 +201,7 @@ export class MessagesService {
 
       message.hasReply = true;
       message.replyContent = dto.reply.trim();
+      message.isEncrypted = true;
       message.repliedAt = new Date();
       const savedReply = await messageRepo.save(message);
 
@@ -196,7 +215,7 @@ export class MessagesService {
               messageId: savedReply.id,
               confessionId: message.confession.id,
               recipientEmail,
-              replyPreview: dto.reply.substring(0, 100),
+              replyPreview: ENCRYPTED_PREVIEW,
             },
             idempotencyKey: `reply:${savedReply.id}`,
             status: OutboxStatus.PENDING,

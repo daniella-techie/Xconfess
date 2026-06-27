@@ -18,6 +18,10 @@ export class Message {
   @Column({ type: 'text' })
   content: string;
 
+  /** True when content/replyContent are E2E ciphertext envelopes. */
+  @Column({ default: true })
+  isEncrypted: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 

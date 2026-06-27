@@ -7,10 +7,15 @@ import {
   Query,
   UsePipes,
   ValidationPipe,
+  Put,
+  Param,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { MessagesService } from './messages.service';
+import { MessageKeysService } from './message-keys.service';
 import { CreateMessageDto, GetMessagesQueryDto, ReplyMessageDto } from './dto/message.dto';
+import { RegisterMessageKeyDto } from './dto/message-key.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { NotificationQueue } from '../notification/notification.queue';
 import { GetUser } from '../auth/get-user.decorator';
@@ -22,6 +27,7 @@ import { User } from '../user/entities/user.entity';
 export class MessagesController {
   constructor(
     private readonly messagesService: MessagesService,
+    private readonly messageKeysService: MessageKeysService,
     private readonly notificationQueue: NotificationQueue,
   ) { }
 
@@ -77,6 +83,7 @@ export class MessagesController {
       messages: messages.map((m) => ({
         id: m.id,
         content: m.content,
+        isEncrypted: m.isEncrypted,
         createdAt: m.createdAt,
         hasReply: m.hasReply,
         replyContent: m.replyContent,
@@ -84,5 +91,38 @@ export class MessagesController {
       })),
       total: messages.length,
     };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put('keys')
+  @ApiOperation({ summary: 'Register E2E public key for current anonymous session' })
+  async registerKey(
+    @Body() dto: RegisterMessageKeyDto,
+    @GetUser() user: User,
+  ) {
+    return this.messageKeysService.registerForSession(user, dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('keys/me')
+  @ApiOperation({ summary: 'Get E2E key status for current anonymous session' })
+  async getMyKey(@GetUser() user: User) {
+    return this.messageKeysService.getMySessionKey(user);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('keys/backup')
+  @ApiOperation({ summary: 'Download passphrase-wrapped private key backup' })
+  async getKeyBackup(@GetUser() user: User) {
+    return this.messageKeysService.getKeyBackup(user);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('keys/:anonymousUserId')
+  @ApiOperation({ summary: 'Fetch E2E public key for a thread participant' })
+  async getParticipantKey(
+    @Param('anonymousUserId', ParseUUIDPipe) anonymousUserId: string,
+  ) {
+    return this.messageKeysService.getPublicKey(anonymousUserId);
   }
 }

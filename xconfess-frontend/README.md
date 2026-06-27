@@ -263,7 +263,7 @@ We welcome contributions from the community! xConfess is participating in the **
 
 ### 🔮 Phase 3: Advanced Features (Q2 2026)
 - [ ] NFT badge system
-- [ ] Anonymous messaging (E2E encrypted)
+- [x] Anonymous messaging (E2E encrypted)
 - [ ] Reputation scoring
 - [ ] Content moderation tools
 

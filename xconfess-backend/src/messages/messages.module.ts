@@ -2,6 +2,7 @@ import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Message } from './entities/message.entity';
 import { MessagesService } from './messages.service';
+import { MessageKeysService } from './message-keys.service';
 import { MessagesController } from './messages.controller';
 import { User } from '../user/entities/user.entity';
 import { AnonymousConfession } from '../confession/entities/confession.entity';
@@ -17,7 +18,7 @@ import { OutboxEvent } from '../common/entities/outbox-event.entity';
     forwardRef(() => NotificationModule),
     UserModule,
   ],
-  providers: [MessagesService],
+  providers: [MessagesService, MessageKeysService],
   controllers: [MessagesController],
   exports: [MessagesService],
 })

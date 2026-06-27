@@ -4,10 +4,12 @@ import { MessagesService } from './messages.service';
 import { Message } from './entities/message.entity';
 import { AnonymousConfession } from '../confession/entities/confession.entity';
 import { UserAnonymousUser } from '../user/entities/user-anonymous-link.entity';
+import { OutboxEvent } from '../common/entities/outbox-event.entity';
 import { AnonymousUserService } from '../user/anonymous-user.service';
-import { Repository } from 'typeorm';
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { Repository, DataSource } from 'typeorm';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { User } from '../user/entities/user.entity';
+import { encryptMessage, generateMessageKeyPair, buildThreadId } from './crypto/message-e2e.crypto';
 
 describe('MessagesService', () => {
   let service: MessagesService;
@@ -18,8 +20,21 @@ describe('MessagesService', () => {
 
   const mockUser: User = { id: 1 } as User;
   const mockAnonId = 'anon-123';
-  const mockConfessionId = 'conf-123';
-  const mockSenderId = 'sender-456';
+
+  const mockConfessionId = '11111111-1111-4111-8111-111111111111';
+  const mockSenderId = '22222222-2222-4222-8222-222222222222';
+  let encryptedReply: string;
+
+  beforeAll(async () => {
+    const sender = await generateMessageKeyPair();
+    const author = await generateMessageKeyPair();
+    encryptedReply = await encryptMessage(
+      'Got it!',
+      author.privateKey,
+      sender.publicKey,
+      buildThreadId(mockConfessionId, mockSenderId),
+    );
+  });
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -47,6 +62,19 @@ describe('MessagesService', () => {
           provide: getRepositoryToken(UserAnonymousUser),
           useValue: {
             find: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(OutboxEvent),
+          useValue: {
+            create: jest.fn(),
+            save: jest.fn(),
+          },
+        },
+        {
+          provide: DataSource,
+          useValue: {
+            transaction: jest.fn(),
           },
         },
         {
@@ -127,15 +155,36 @@ describe('MessagesService', () => {
       jest.spyOn(messageRepo, 'findOne').mockResolvedValue(message);
       jest.spyOn(userAnonRepo, 'find').mockResolvedValue([{ anonymousUserId: mockAnonId }] as any);
       const mockSave = jest.fn().mockImplementation((m) => Promise.resolve({ ...m }));
-      const mockManager = { save: mockSave };
+      const mockOutboxSave = jest.fn();
+      const mockManager = {
+        getRepository: jest.fn((entity) => {
+          if (entity === Message) {
+            return { save: mockSave };
+          }
+          return { create: jest.fn(), save: mockOutboxSave };
+        }),
+      };
       jest
         .spyOn(messageRepo.manager as any, 'transaction')
         .mockImplementation(async (fn: any) => fn(mockManager));
 
-      await service.reply({ message_id: 1, reply: 'Got it!' }, mockUser);
+      await service.reply({ message_id: 1, reply: encryptedReply }, mockUser);
       expect(message.hasReply).toBe(true);
-      expect(message.replyContent).toBe('Got it!');
+      expect(message.replyContent).toBe(encryptedReply);
       expect(mockSave).toHaveBeenCalledWith(message);
+    });
+
+    it('should reject plaintext reply', async () => {
+      const message = {
+        id: 1,
+        hasReply: false,
+        confession: { id: 'c1', anonymousUser: { id: mockAnonId } },
+      } as any;
+      jest.spyOn(messageRepo, 'findOne').mockResolvedValue(message);
+      jest.spyOn(userAnonRepo, 'find').mockResolvedValue([{ anonymousUserId: mockAnonId }] as any);
+
+      await expect(service.reply({ message_id: 1, reply: 'plaintext' }, mockUser))
+        .rejects.toThrow(BadRequestException);
     });
 
     it('should throw ForbiddenException when user is not confession author', async () => {
@@ -147,14 +196,14 @@ describe('MessagesService', () => {
       jest.spyOn(messageRepo, 'findOne').mockResolvedValue(message);
       jest.spyOn(userAnonRepo, 'find').mockResolvedValue([{ anonymousUserId: 'unrelated-anon' }] as any);
 
-      await expect(service.reply({ message_id: 1, reply: 'Reply' }, mockUser))
+      await expect(service.reply({ message_id: 1, reply: encryptedReply }, mockUser))
         .rejects.toThrow(ForbiddenException);
     });
 
     it('should throw NotFoundException when message does not exist', async () => {
       jest.spyOn(messageRepo, 'findOne').mockResolvedValue(null);
 
-      await expect(service.reply({ message_id: 999, reply: 'Reply' }, mockUser))
+      await expect(service.reply({ message_id: 999, reply: encryptedReply }, mockUser))
         .rejects.toThrow(NotFoundException);
     });
 
@@ -166,7 +215,7 @@ describe('MessagesService', () => {
       } as any;
       jest.spyOn(messageRepo, 'findOne').mockResolvedValue(message);
 
-      await expect(service.reply({ message_id: 1, reply: 'Reply' }, mockUser))
+      await expect(service.reply({ message_id: 1, reply: encryptedReply }, mockUser))
         .rejects.toThrow(ForbiddenException);
     });
   });
