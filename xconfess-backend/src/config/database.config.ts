@@ -31,13 +31,46 @@ export const getTypeOrmConfig = (
       ? !['test', 'ci'].includes(nodeEnv) && !isLocalDevEnv
       : TRUE_VALUES.has(migrationsRunSetting.toLowerCase());
 
+  const dbHost = configService.get<string>('DB_HOST');
+  const dbPort = configService.get<number>('DB_PORT');
+  const dbUsername = configService.get<string>('DB_USERNAME');
+  const dbPassword = configService.get<string>('DB_PASSWORD');
+  const dbName = configService.get<string>('DB_NAME');
+
+  const readHost = configService.get<string>('DB_READ_HOST') || dbHost;
+  const readPort = configService.get<number>('DB_READ_PORT') || dbPort;
+
   return {
     type: 'postgres',
-    host: configService.get<string>('DB_HOST'),
-    port: configService.get<number>('DB_PORT'),
-    username: configService.get<string>('DB_USERNAME'),
-    password: configService.get<string>('DB_PASSWORD'),
-    database: configService.get<string>('DB_NAME'),
+    /*
+     * Replication topology:
+     *
+     *   master  – used for all writes (INSERT, UPDATE, DELETE, DDL).
+     *   slaves  – used for reads  (SELECT, find(), createQueryBuilder reads).
+     *
+     * In local / single-node dev the replica can point to the same host.
+     * In production, set DB_READ_HOST / DB_READ_PORT to point to one or
+     * more read replicas.  TypeORM distributes read queries round-robin
+     * across the slaves array.
+     */
+    replication: {
+      master: {
+        host: dbHost,
+        port: dbPort,
+        username: dbUsername,
+        password: dbPassword,
+        database: dbName,
+      },
+      slaves: [
+        {
+          host: readHost,
+          port: readPort,
+          username: dbUsername,
+          password: dbPassword,
+          database: dbName,
+        },
+      ],
+    },
     entities: [__dirname + '/../**/*.entity{.ts,.js}'],
 
     migrations: [__dirname + '/../../migrations/[0-9]*{.ts,.js}'],
