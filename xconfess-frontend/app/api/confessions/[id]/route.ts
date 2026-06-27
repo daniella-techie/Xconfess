@@ -112,6 +112,7 @@ export async function GET(
       const err = await response.json().catch(() => ({}));
       return createApiErrorResponse(err, {
         status: response.status,
+          upstreamResponse: response,
         fallbackMessage: "Failed to fetch confession",
         route: "GET /api/confessions/[id]"
       });

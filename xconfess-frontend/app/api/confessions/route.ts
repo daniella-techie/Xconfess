@@ -43,6 +43,7 @@ export async function POST(request: Request) {
         const errorData = await response.json().catch(() => ({}));
         return createApiErrorResponse(errorData, {
           status: response.status,
+          upstreamResponse: response,
           correlationId,
           fallbackMessage: `Failed to create confession: ${response.statusText}`,
           route: "POST /api/confessions"
@@ -109,6 +110,7 @@ export async function GET(request: Request) {
     if (!response.ok) {
       return createApiErrorResponse(undefined, {
         status: response.status,
+          upstreamResponse: response,
         correlationId,
         fallbackMessage: `Failed to fetch confessions: ${response.statusText}`,
         route: "GET /api/confessions"

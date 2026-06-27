@@ -93,6 +93,7 @@ export async function POST(
       const err = await response.json().catch(() => ({} as { message?: string }));
       return createApiErrorResponse(err, {
         status: response.status,
+          upstreamResponse: response,
         fallbackMessage: "Failed to post comment",
         correlationId,
         route: "POST /api/comments/[confessionId]"

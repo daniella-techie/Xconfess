@@ -9,6 +9,7 @@ import { Reflector } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
 import { getRateLimitConfig } from '../../config/rate-limit.config';
+import { ErrorCode } from '../../common/errors/error-codes';
 
 interface RateLimitEntry {
   count: number;
@@ -64,8 +65,10 @@ export class RateLimitGuard implements CanActivate {
       throw new HttpException(
         {
           statusCode: HttpStatus.TOO_MANY_REQUESTS,
+          code: ErrorCode.RATE_LIMIT_EXCEEDED,
           message: 'Too many requests, please try again later',
           retryAfter,
+          requestId: (request as any).requestId || 'unknown',
         },
         HttpStatus.TOO_MANY_REQUESTS,
       );

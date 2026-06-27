@@ -18,6 +18,29 @@ export async function GET(request: NextRequest) {
     });
 
     if (!res.ok) {
+      if (res.status === 429) {
+        const errBody = await res.json().catch(() => ({}));
+        const retryAfter = typeof errBody.retryAfter === 'number'
+          ? errBody.retryAfter
+          : parseInt(res.headers.get('retry-after') ?? '60', 10);
+        return NextResponse.json(
+          {
+            statusCode: 429,
+            code: 'RATE_LIMIT_EXCEEDED',
+            message: errBody.message ?? 'Too many requests. Please slow down.',
+            retryAfter,
+            requestId: errBody.requestId ?? res.headers.get('x-request-id') ?? '',
+            timestamp: errBody.timestamp ?? new Date().toISOString(),
+          },
+          {
+            status: 429,
+            headers: {
+              'Retry-After': String(retryAfter),
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+      }
       return NextResponse.json({ results: [] }, { status: 200 });
     }
 

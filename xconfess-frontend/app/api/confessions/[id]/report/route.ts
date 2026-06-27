@@ -58,6 +58,7 @@ export async function POST(
       const errData = await res.json().catch(() => ({}));
       return createApiErrorResponse(errData, {
         status: res.status,
+          upstreamResponse: res,
         route: "POST /api/confessions/[id]/report"
       });
     }

@@ -1,3 +1,4 @@
+import { createApiErrorResponse } from "@/lib/apiErrorHandler";
 import { buildProxyErrorResponse, internalProxyErrorResponse } from "@/app/lib/utils/proxyError";
 import { getApiBaseUrl } from "@/app/lib/config";
 
@@ -109,8 +110,13 @@ export async function GET(
         });
       }
 
-      const err = await response.json().catch(() => ({} as { message?: string }));
-      return buildProxyErrorResponse(err.message || "Failed to fetch comments", response.status, { route: "GET /api/comments/by-confession/[confessionId]" });
+      const errBody = await response.json().catch(() => ({}));
+      return createApiErrorResponse(errBody, {
+          status: response.status,
+          fallbackMessage: "Failed to fetch comments",
+          upstreamResponse: response,
+          route: "GET /api/comments/by-confession/[confessionId]"
+        });
     }
 
     const data = await response.json();

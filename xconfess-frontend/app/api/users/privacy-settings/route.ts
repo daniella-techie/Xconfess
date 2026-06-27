@@ -23,6 +23,7 @@ export async function GET(request: Request) {
       const errData = await response.json().catch(() => ({}));
       return createApiErrorResponse(errData, {
         status: response.status,
+          upstreamResponse: response,
         correlationId,
         route: "GET /api/users/privacy-settings"
       });
@@ -68,6 +69,7 @@ export async function PATCH(request: Request) {
       const errData = await response.json().catch(() => ({}));
       return createApiErrorResponse(errData, {
         status: response.status,
+          upstreamResponse: response,
         correlationId,
         route: "PATCH /api/users/privacy-settings"
       });

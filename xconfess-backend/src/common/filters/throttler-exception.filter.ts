@@ -3,6 +3,16 @@ import { Request, Response } from 'express';
 import { ThrottlerException } from '@nestjs/throttler';
 import { ErrorCode } from '../errors/error-codes';
 
+export interface RateLimitErrorBody {
+  statusCode: 429;
+  code: ErrorCode.RATE_LIMIT_EXCEEDED;
+  message: string;
+  retryAfter: number;
+  requestId: string;
+  timestamp: string;
+  path: string;
+}
+
 @Catch(ThrottlerException)
 export class ThrottlerExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(ThrottlerExceptionFilter.name);
@@ -11,25 +21,30 @@ export class ThrottlerExceptionFilter implements ExceptionFilter {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
-    const status = exception.getStatus();
 
     const responseData = exception.getResponse();
     const retryAfter = this.extractRetryAfter(responseData) ?? 60;
+    const requestId = (request as any).requestId || 'unknown';
+
+    // Set standard rate-limit headers
     response.setHeader('Retry-After', retryAfter.toString());
+    response.setHeader('X-Request-Id', requestId);
 
     this.logger.warn(
-      `Rate limit exceeded: ${request.method} ${request.url} from ${request.ip}`,
+      `RATE_LIMIT_EXCEEDED method=${request.method} path=${request.url} ip=${request.ip} requestId=${requestId} retryAfter=${retryAfter}`,
     );
 
-    response.status(status).json({
-      status,
-      code: ErrorCode.THROTTLED,
+    const body: RateLimitErrorBody = {
+      statusCode: 429,
+      code: ErrorCode.RATE_LIMIT_EXCEEDED,
       message: 'Too many requests. Please wait a moment and try again.',
       retryAfter,
+      requestId,
       timestamp: new Date().toISOString(),
       path: request.url,
-      requestId: (request as any).requestId || 'unknown',
-    });
+    };
+
+    response.status(429).json(body);
   }
 
   private extractRetryAfter(responseData: unknown): number | undefined {
