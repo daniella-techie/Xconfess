@@ -12,6 +12,13 @@ import { CreateNotificationDto, NotificationQueryDto } from '../dto/notification
 import { Queue } from 'bullmq';
 import { AppLogger } from '../../logger/logger.service';
 import { ConfigService } from '@nestjs/config';
+import { User } from '../../user/entities/user.entity';
+
+interface ChannelPreferences {
+  inApp?: boolean;
+  email?: boolean;
+  push?: boolean;
+}
 
 @Injectable()
 export class NotificationService {
@@ -20,6 +27,8 @@ export class NotificationService {
     private notificationRepository: Repository<Notification>,
     @InjectRepository(NotificationPreference)
     private preferenceRepository: Repository<NotificationPreference>,
+    @InjectRepository(User)
+    private userRepository: Repository<User>,
     @InjectQueue(NOTIFICATION_QUEUE)
     private notificationQueue: Queue,
     private readonly appLogger: AppLogger,
@@ -60,13 +69,22 @@ export class NotificationService {
   ): Promise<Notification | null> {
     const preference = await this.getUserPreference(dto.userId);
 
-    // Check if user wants this type of notification
+    // Check if user wants this type of notification (NotificationPreference table)
     if (!this.shouldSendNotification(preference, dto.type)) {
       return null;
     }
 
-    // Check if we're in quiet hours
+    // Check user-level notification preferences (category × channel matrix)
+    const channelPrefs = await this.getUserChannelPreferences(dto.userId, dto.type);
+    if (channelPrefs && !channelPrefs.inApp) {
+      return null;
+    }
+
+    // Check if we're in quiet hours (check both preference systems)
     if (this.isQuietHours(preference)) {
+      return null;
+    }
+    if (await this.isQuietHoursForUser(dto.userId)) {
       return null;
     }
 
@@ -77,6 +95,7 @@ export class NotificationService {
     if (
       preference.enableEmailNotifications &&
       this.shouldSendEmail(preference, dto.type) &&
+      (channelPrefs ? channelPrefs.email : true) &&
       this.configService.get<string>('ENABLE_BACKGROUND_JOBS') === 'true'
     ) {
       await this.notificationQueue.add(
@@ -261,6 +280,47 @@ export class NotificationService {
     });
   }
 
+  private getCategoryKey(type: NotificationType): string | null {
+    switch (type) {
+      case NotificationType.NEW_MESSAGE:
+      case NotificationType.MESSAGE_BATCH:
+        return 'messages';
+      case NotificationType.MENTION:
+        return 'mentions';
+      case NotificationType.COMMENT_REPLY:
+        return 'comments';
+      case NotificationType.SYSTEM:
+        return 'system';
+      default:
+        return null;
+    }
+  }
+
+  private async getUserChannelPreferences(
+    userId: string,
+    type: NotificationType,
+  ): Promise<{ inApp: boolean; email: boolean; push: boolean } | null> {
+    try {
+      const user = await this.userRepository.findOne({ where: { id: Number(userId) } });
+      if (!user) return null;
+
+      const prefs = user.notificationPreferences || {};
+      const categoryKey = this.getCategoryKey(type);
+      if (!categoryKey) return null;
+
+      const channels: ChannelPreferences = prefs[categoryKey];
+      if (!channels) return null;
+
+      return {
+        inApp: channels.inApp !== false,
+        email: channels.email !== false,
+        push: channels.push !== false,
+      };
+    } catch {
+      return null;
+    }
+  }
+
   private shouldSendNotification(
     preference: NotificationPreference,
     type: NotificationType,
@@ -294,6 +354,26 @@ export class NotificationService {
     }
   }
 
+  private async isQuietHoursForUser(userId: string): Promise<boolean> {
+    try {
+      const user = await this.userRepository.findOne({ where: { id: Number(userId) } });
+      if (!user) return false;
+
+      const prefs = user.notificationPreferences || {};
+      if (!prefs.enableQuietHours) return false;
+
+      const quietStart: string = prefs.quietHoursStart;
+      const quietEnd: string = prefs.quietHoursEnd;
+      if (!quietStart || !quietEnd) return false;
+
+      const now = new Date();
+      const currentTime = now.toTimeString().slice(0, 8);
+      return currentTime >= quietStart && currentTime <= quietEnd;
+    } catch {
+      return false;
+    }
+  }
+
   private isQuietHours(preference: NotificationPreference): boolean {
     if (
       !preference.enableQuietHours ||
@@ -304,9 +384,8 @@ export class NotificationService {
     }
 
     const now = new Date();
-    const currentTime = now.toTimeString().slice(0, 8); // HH:MM:SS
+    const currentTime = now.toTimeString().slice(0, 8);
 
-    // Simple time comparison (can be enhanced with timezone support)
     return (
       currentTime >= preference.quietHoursStart &&
       currentTime <= preference.quietHoursEnd

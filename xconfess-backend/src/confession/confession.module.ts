@@ -22,6 +22,7 @@ import { ModerationModule } from '../moderation/moderation.module';
 import { UserModule } from '../user/user.module';
 import { StellarModule } from '../stellar/stellar.module';
 import { SearchDiscoveryModule } from '../search-discovery/search-discovery.module';
+import { AnomalyDetectionModule } from '../anomaly/anomaly-detection.module';
 // In-memory mock Redis for development without Redis server
 const REDIS_TOKEN = 'default_IORedisModuleConnectionToken';
 class MockRedis {
@@ -68,6 +69,7 @@ class MockRedis {
     forwardRef(() => UserModule),
     StellarModule,
     SearchDiscoveryModule,
+    AnomalyDetectionModule,
   ],
   controllers: [ConfessionController],
   providers: [

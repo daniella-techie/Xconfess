@@ -166,8 +166,9 @@ export class ConfessionController {
 
   @Get('trending/top')
   @ApiOperation({ summary: 'Get trending confessions' })
-  getTrending() {
-    return this.service.getTrendingConfessions();
+  @ApiQuery({ name: 'window', required: false, enum: ['24h', '7d', '30d', 'all'] })
+  getTrending(@Query('window') window?: string) {
+    return this.service.getTrendingConfessions(window || '24h');
   }
 
   @Get('tags')

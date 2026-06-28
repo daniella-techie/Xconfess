@@ -31,5 +31,5 @@ export interface AnalyticsData {
     totalReactions: number;
     totalUsers: number;
   };
-  period: '7days' | '30days';
+  period: '24h' | '7days' | '30days' | 'all';
 }

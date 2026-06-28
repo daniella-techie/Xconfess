@@ -46,6 +46,7 @@ import { ConfessionTag } from './entities/confession-tag.entity';
 import { toWindowBoundaries, TrendingWindow } from 'src/types/analytics.types';
 import { GetUserConfessionsDto } from './dto/get-user-confessions.dto';
 import { mapToSlimConfession } from './utils/confession-mapper';
+import { AnomalyDetectionService } from '../anomaly/anomaly-detection.service';
 
 @Injectable()
 export class ConfessionService {
@@ -62,6 +63,7 @@ export class ConfessionService {
     private readonly cacheService: CacheService,
     private readonly tagService: TagService,
     private readonly configService: ConfigService,
+    private readonly anomalyDetection: AnomalyDetectionService,
   ) {}
 
   private get aesKey(): string {
@@ -685,19 +687,50 @@ export class ConfessionService {
     return conf;
   }
 
-  async getTrendingConfessions() {
-    // Standardize the trending window to 24 h with UTC-floored boundaries
-    // so edge-of-day records are counted consistently.
-    const { startAt, endAt } = toWindowBoundaries(TrendingWindow.DAY);
-    const confs = await this.confessionRepo.findTrending(10, startAt, endAt);
-    const mapped = confs.map((item) => {
+  async getTrendingConfessions(window: string = '24h') {
+    let days: number;
+    switch (window) {
+      case '7d':
+        days = TrendingWindow.WEEK;
+        break;
+      case '30d':
+        days = TrendingWindow.MONTH;
+        break;
+      case 'all':
+        days = 365 * 10;
+        break;
+      default:
+        days = TrendingWindow.DAY;
+    }
+
+    const { startAt, endAt } = toWindowBoundaries(days);
+    const rawConfs = await this.confessionRepo.findTrending(20, startAt, endAt);
+
+    // Apply anomaly/bot detection adjustment to reduce bot-inflated scores
+    const confs = rawConfs as any[];
+    const adjusted = await Promise.all(
+      confs.map(async (item) => {
+        const adjustment = await this.anomalyDetection.getAdjustmentFactor(item.id);
+        return { item, adjustment };
+      }),
+    );
+
+    // Sort by adjusted score: raw trending_score * anomaly adjustment
+    adjusted.sort((a, b) => {
+      const scoreA = Number(a.item.trending_score) || 0;
+      const scoreB = Number(b.item.trending_score) || 0;
+      return (scoreB * b.adjustment) - (scoreA * a.adjustment);
+    });
+
+    const mapped = adjusted.map(({ item }) => {
       const decrypted = {
         ...item,
         message: decryptConfession(item.message, this.aesKey),
       };
       return mapToSlimConfession(decrypted);
     });
-    return { data: mapped };
+
+    return { data: mapped, window };
   }
 
   async updateModerationStatus(

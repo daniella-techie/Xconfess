@@ -17,6 +17,9 @@ pub mod codes {
     pub const RATE_LIMITED: u32 = 6007;
     pub const INVALID_RATE_LIMIT_CONFIG: u32 = 6008;
     pub const TOKEN_NOT_CONFIGURED: u32 = 6009;
+    pub const SETTLEMENT_REPLAY: u32 = 6010;
+    pub const SETTLEMENT_NOT_FOUND: u32 = 6011;
+    pub const RECIPIENT_MISMATCH: u32 = 6012;
 }
 
 /// Error classification for backend retry strategy
@@ -43,6 +46,9 @@ pub enum Error {
     RateLimited = 7,
     InvalidRateLimitConfig = 8,
     TokenNotConfigured = 9,
+    SettlementReplay = 10,
+    SettlementNotFound = 11,
+    RecipientMismatch = 12,
 }
 
 impl Error {
@@ -59,6 +65,9 @@ impl Error {
             Error::RateLimited => codes::RATE_LIMITED,
             Error::InvalidRateLimitConfig => codes::INVALID_RATE_LIMIT_CONFIG,
             Error::TokenNotConfigured => codes::TOKEN_NOT_CONFIGURED,
+            Error::SettlementReplay => codes::SETTLEMENT_REPLAY,
+            Error::SettlementNotFound => codes::SETTLEMENT_NOT_FOUND,
+            Error::RecipientMismatch => codes::RECIPIENT_MISMATCH,
         }
     }
 
@@ -74,6 +83,9 @@ impl Error {
             Error::RateLimited => "rate limit exceeded",
             Error::InvalidRateLimitConfig => "invalid rate limit configuration",
             Error::TokenNotConfigured => "xlm token contract is not configured",
+            Error::SettlementReplay => "settlement id reuse detected",
+            Error::SettlementNotFound => "settlement receipt not found",
+            Error::RecipientMismatch => "settlement recipient mismatch",
         }
     }
 
@@ -86,6 +98,9 @@ impl Error {
             Error::Unauthorized => ErrorClassification::Terminal,
             Error::InvalidRateLimitConfig => ErrorClassification::Terminal,
             Error::TokenNotConfigured => ErrorClassification::Terminal,
+            Error::SettlementReplay => ErrorClassification::Terminal,
+            Error::SettlementNotFound => ErrorClassification::Terminal,
+            Error::RecipientMismatch => ErrorClassification::Terminal,
 
             // Retryable: transient state (pause, rate limit) may resolve
             Error::ContractPaused => ErrorClassification::Retryable,
@@ -106,7 +121,7 @@ pub struct AnonymousTipping;
 /// before explicit versioning was introduced.  SCHEMA_VERSION_CURRENT is the
 /// version this WASM implements; `migrate()` brings storage up to this level.
 pub const SCHEMA_VERSION_INITIAL: u32 = 1;
-pub const SCHEMA_VERSION_CURRENT: u32 = 2;
+pub const SCHEMA_VERSION_CURRENT: u32 = 3;
 
 #[contracttype]
 #[derive(Clone)]
@@ -124,6 +139,22 @@ enum DataKey {
     /// v2: global count of all successful tip settlements across all recipients.
     /// Absent (or 0) before `migrate()` is called.
     GlobalTipCount,
+    /// v3: stores settlement receipt data keyed by settlement_id for replay
+    /// detection and cross-contract receipt verification.
+    SettlementReceipt(u64),
+}
+
+/// Persistent TTL for per-user and per-settlement data (in ledgers).
+/// 31 days ≈ 44640 ledgers at ~1 minute per ledger on Stellar.
+const PERSISTENT_TTL_LEDGERS: u32 = 44_640;
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SettlementReceipt {
+    pub recipient: Address,
+    pub amount: i128,
+    pub timestamp: u64,
+    pub settlement_id: u64,
 }
 
 #[contracttype]
@@ -255,6 +286,10 @@ impl AnonymousTipping {
         env.storage()
             .persistent()
             .set(&DataKey::RecipientTotal(recipient.clone()), &next_total);
+        // Extend TTL on persistent storage to prevent data loss
+        env.storage()
+            .persistent()
+            .extend_ttl(&DataKey::RecipientTotal(recipient.clone()), PERSISTENT_TTL_LEDGERS, PERSISTENT_TTL_LEDGERS);
 
         let settlement_id = env
             .storage()
@@ -267,6 +302,22 @@ impl AnonymousTipping {
             .instance()
             .set(&DataKey::SettlementNonce, &settlement_id);
 
+        // Store settlement receipt for replay detection and cross-contract
+        // verification. This allows downstream consumers and other contracts
+        // to verify a settlement occurred without re-processing events.
+        let receipt = SettlementReceipt {
+            recipient: recipient.clone(),
+            amount,
+            timestamp: env.ledger().timestamp(),
+            settlement_id,
+        };
+        env.storage()
+            .persistent()
+            .set(&DataKey::SettlementReceipt(settlement_id), &receipt);
+        env.storage()
+            .persistent()
+            .extend_ttl(&DataKey::SettlementReceipt(settlement_id), PERSISTENT_TTL_LEDGERS, PERSISTENT_TTL_LEDGERS);
+
         SettlementEvent {
             recipient,
             event_version: EVENT_VERSION_V1,
@@ -274,7 +325,7 @@ impl AnonymousTipping {
             amount,
             proof_metadata: metadata.clone(),
             proof_present: !metadata.is_empty(),
-            timestamp: env.ledger().timestamp(),
+            timestamp: receipt.timestamp,
         }
         .publish(&env);
 
@@ -416,6 +467,13 @@ impl AnonymousTipping {
     /// Off-chain reconciliation should combine the pre-migration event log with
     /// the on-chain counter when a complete historical count is needed.
     ///
+    /// ## v2 → v3
+    /// Settlement receipts are now stored per-settlement_id for replay detection
+    /// and cross-contract verification. No back-fill is needed — receipts are
+    /// only written for post-migration settlements. The v3 code also adds TTL
+    /// extension calls (`extend_ttl`) on persistent storage to prevent data
+    /// loss on `RecipientTotal`, `WalletWindow`, and `SettlementReceipt` keys.
+    ///
     /// ## Rollback
     /// Schema bumps are additive (new keys only, no existing key is removed or
     /// retyped).  Rolling back the WASM to v1 is safe: the v1 code simply
@@ -468,6 +526,44 @@ impl AnonymousTipping {
             .unwrap_or(0_u64)
     }
 
+    /// Claim a settlement receipt by settlement_id for cross-contract
+    /// verification and replay detection.
+    ///
+    /// Returns the receipt if the settlement_id exists, or an error if
+    /// the settlement was never created or has expired from storage.
+    ///
+    /// ## Replay detection
+    /// Backend consumers can call this function with a candidate
+    /// settlement_id. If the receipt exists and the recipient matches,
+    /// the settlement is authentic. If the receipt does not exist, the
+    /// event should be treated as a replay or invalid.
+    ///
+    /// ## Cross-contract verification
+    /// Other Soroban contracts can call this function to verify that a
+    /// settlement occurred before releasing funds or granting access.
+    pub fn claim_receipt(env: Env, settlement_id: u64) -> Result<SettlementReceipt, Error> {
+        env.storage()
+            .persistent()
+            .get::<_, SettlementReceipt>(&DataKey::SettlementReceipt(settlement_id))
+            .ok_or(Error::SettlementNotFound)
+    }
+
+    /// Verify that a specific settlement_id belongs to the given recipient.
+    /// This is a convenience wrapper around `claim_receipt` that additionally
+    /// checks the recipient field, returning `SettlementReceipt` on match
+    /// or an appropriate error otherwise.
+    pub fn verify_settlement(
+        env: Env,
+        settlement_id: u64,
+        expected_recipient: Address,
+    ) -> Result<SettlementReceipt, Error> {
+        let receipt = Self::claim_receipt(env, settlement_id)?;
+        if receipt.recipient != expected_recipient {
+            return Err(Error::RecipientMismatch);
+        }
+        Ok(receipt)
+    }
+
     fn require_owner(env: &Env, caller: &Address) -> Result<(), Error> {
         let owner = env
             .storage()
@@ -517,6 +613,9 @@ impl AnonymousTipping {
         env.storage()
             .persistent()
             .set(&DataKey::WalletWindow(wallet.clone()), &state);
+        env.storage()
+            .persistent()
+            .extend_ttl(&DataKey::WalletWindow(wallet.clone()), PERSISTENT_TTL_LEDGERS, PERSISTENT_TTL_LEDGERS);
         Ok(())
     }
 }
@@ -525,3 +624,5 @@ impl AnonymousTipping {
 mod test;
 #[cfg(test)]
 mod tipping_adversarial;
+#[cfg(test)]
+mod tipping_fuzz;

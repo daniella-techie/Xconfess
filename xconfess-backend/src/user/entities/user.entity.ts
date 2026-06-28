@@ -17,6 +17,10 @@ export enum NotificationCategory {
   REACTION = 'reaction',
   MODERATION = 'moderation',
   SYSTEM = 'system',
+  COMMENT = 'comments',
+  MENTION = 'mentions',
+  TIP = 'tips',
+  REPORT = 'reports',
 }
 
 export interface PrivacySettings {
@@ -69,7 +73,7 @@ export class User {
     type: 'jsonb',
     default: () => "'{}'",
   })
-  notificationPreferences!: Partial<Record<NotificationCategory, boolean>>;
+  notificationPreferences!: Record<string, any>;
 
   @Column({
     name: 'privacy_settings',
